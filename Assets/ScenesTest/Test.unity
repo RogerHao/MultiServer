@@ -610,8 +610,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 739999962}
-        m_MethodName: StartServer
+      - m_Target: {fileID: 739999964}
+        m_MethodName: StartUnet
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -742,6 +742,8 @@ GameObject:
   - component: {fileID: 739999959}
   - component: {fileID: 739999958}
   - component: {fileID: 739999962}
+  - component: {fileID: 739999963}
+  - component: {fileID: 739999964}
   m_Layer: 5
   m_Name: Canvas
   m_TagString: Untagged
@@ -834,7 +836,7 @@ MonoBehaviour:
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 739999957}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 902fdc3c8ce849a4c8a96e5087b578ef, type: 3}
   m_Name: 
@@ -843,6 +845,32 @@ MonoBehaviour:
   Clients: {fileID: 2129467978}
   Client: {fileID: 114367755531058328, guid: 4b64677dcb6d0bd4cb69620ece967e3c, type: 2}
   ClientsList: []
+--- !u!114 &739999963
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 739999957}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eda5a5958da58ff49a028778e96c64f7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Clients: {fileID: 2129467978}
+  client: {fileID: 114367755531058328, guid: 4b64677dcb6d0bd4cb69620ece967e3c, type: 2}
+--- !u!114 &739999964
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 739999957}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f7bf79e7ee5216342861e58ca2675266, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Clients: {fileID: 2129467978}
+  client: {fileID: 114367755531058328, guid: 4b64677dcb6d0bd4cb69620ece967e3c, type: 2}
 --- !u!1001 &880959923
 Prefab:
   m_ObjectHideFlags: 0
@@ -948,12 +976,12 @@ Prefab:
     - target: {fileID: 224469694804262772, guid: 68df552c3fd3e3f4aba9e189d929f7f6,
         type: 2}
       propertyPath: m_AnchorMax.y
-      value: 0.70823026
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 224717679895491194, guid: 68df552c3fd3e3f4aba9e189d929f7f6,
         type: 2}
       propertyPath: m_AnchoredPosition.y
-      value: 350.04517
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 224064163948592074, guid: 68df552c3fd3e3f4aba9e189d929f7f6,
         type: 2}
@@ -969,6 +997,16 @@ Prefab:
         type: 2}
       propertyPath: m_SizeDelta.x
       value: -17
+      objectReference: {fileID: 0}
+    - target: {fileID: 224469694804262772, guid: 68df552c3fd3e3f4aba9e189d929f7f6,
+        type: 2}
+      propertyPath: m_AnchorMin.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 224717679895491194, guid: 68df552c3fd3e3f4aba9e189d929f7f6,
+        type: 2}
+      propertyPath: m_SizeDelta.y
+      value: 850
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: 68df552c3fd3e3f4aba9e189d929f7f6, type: 2}
@@ -1197,12 +1235,12 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 739999957}
-        m_MethodName: 
+      - m_Target: {fileID: 739999964}
+        m_MethodName: Stop
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: 
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 0
           m_FloatArgument: 0
           m_StringArgument: 
