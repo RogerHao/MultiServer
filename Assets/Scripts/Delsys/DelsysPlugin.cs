@@ -13,7 +13,7 @@ namespace DelsysPlugin
 {
     public class DelsysEmgSolver
     {
-#region Private Properties
+        #region Public Properties
         public int ChannelNum { get; private set; }
         public int GestureNum { get; private set; }
         public int GestureCutNum { get; private set; }
@@ -37,7 +37,6 @@ namespace DelsysPlugin
         public bool AccGetting { get; private set; } = false;
 
 #endregion
-
 
 #region Private Properties
         private Classifier _emgClassifier;
@@ -124,8 +123,6 @@ namespace DelsysPlugin
             return _emgClassifier.Predict(EmgData.GetRange(startIndex, 300));
         }
 
-
-
         public string Connect(string serverUrl = "localhost")
         {
             if (Connected) return "Connected";
@@ -174,7 +171,7 @@ namespace DelsysPlugin
             return "OK";
         }
 
-        private string SendCommand(string command)
+        public string SendCommand(string command)
         {
             string response = "";
             if (Connected)
@@ -198,11 +195,9 @@ namespace DelsysPlugin
         {
             if (!EmgGetting) StartGetEmgData();
             else emgDataList.Clear();
-
             while (emgDataList.Count < amount)
             {
             }
-            StopGetEmgData();
             return emgDataList.GetRange(startCut,sample);
         }
         public int StartPredict()
@@ -248,6 +243,7 @@ namespace DelsysPlugin
         {
             EmgGetting = false;
             string response = SendCommand(COMMAND_STOP);
+            emgDataList.Clear();
             emgThread.Join();
             return;
         }
@@ -281,7 +277,7 @@ namespace DelsysPlugin
         {
             if (predictCancellationTokenSource.IsCancellationRequested) return -1;
             predictCancellationTokenSource.Cancel();
-            StopGetEmgDataAsync();
+            StopGetEmgDataAsync(true);
             return 0;
         }
         private void StartGetEmgDateAsync()
@@ -298,10 +294,11 @@ namespace DelsysPlugin
             string response = SendCommand(COMMAND_START);
             return;
         }
-        private void StopGetEmgDataAsync()
+        private void StopGetEmgDataAsync(bool clear=false)
         {
             emgCancellationTokenSource.Cancel();
             string response = SendCommand(COMMAND_STOP);
+            if(clear) emgDataList.Clear();
             emgStream.Close();
             emgSocket.Close();
             return;
@@ -336,8 +333,9 @@ namespace DelsysPlugin
             return "OK";
         }
 
-        public static void SaveDataToCsv(string filePath, string commment,List<List<double>> _trainData)
+        public void SaveDataToCsv(string filePath, string commment,List<List<double>> _trainData)
         {
+            if (_trainData == null) _trainData = EmgData;
             if (string.IsNullOrEmpty(filePath)) filePath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
             if (!File.Exists($"{filePath}//emgdata"+commment+".csv"))
             {
@@ -502,7 +500,7 @@ namespace DelsysPlugin
                             if (sn < ChannelNum) rowData.Add(oneData);
                         }
                         lock (emgLock) emgDataList.Add(rowData);
-                        if(emgDataList.Count>=number && number!=0) emgCancellationTokenSource.Cancel();
+                        if(emgDataList.Count>=number && number!=0) StopGetEmgDataAsync();
                     }
                     catch (Exception)
                     {

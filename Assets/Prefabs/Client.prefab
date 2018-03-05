@@ -657,8 +657,10 @@ MonoBehaviour:
   ClientInfoText: {fileID: 114255623413488988}
   SendInputField: {fileID: 114835649504691030}
   RecText: {fileID: 114060888638455298}
+  RecString: 
   SendButton: {fileID: 114340542944562512}
   ClearButton: {fileID: 114123055233789236}
+  IsActive: 1
   HostId: 0
   ConnectionId: 0
   ChannelId: 0
@@ -681,9 +683,9 @@ MonoBehaviour:
     m_SelectOnRight: {fileID: 0}
   m_Transition: 1
   m_Colors:
-    m_NormalColor: {r: 0.39851862, g: 0.8602941, b: 0.57367474, a: 1}
-    m_HighlightedColor: {r: 0.40000004, g: 0.8588236, b: 0.57254905, a: 1}
-    m_PressedColor: {r: 0.40000004, g: 0.8588236, b: 0.57254905, a: 1}
+    m_NormalColor: {r: 0.2392157, g: 0.9450981, b: 0.95294124, a: 0.19607843}
+    m_HighlightedColor: {r: 0.2392157, g: 0.9490197, b: 0.9568628, a: 0.19607843}
+    m_PressedColor: {r: 0.2392157, g: 0.9450981, b: 0.95294124, a: 0.19607843}
     m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
     m_ColorMultiplier: 1
     m_FadeDuration: 0.1

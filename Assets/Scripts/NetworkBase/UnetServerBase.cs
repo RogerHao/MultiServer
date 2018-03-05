@@ -86,7 +86,7 @@ public class UnetServerBase : MonoBehaviour
         NetworkTransport.Shutdown();
     }
 
-    public static void SendMessage(string msg)
+    public static void SendMsg(string msg)
     {
         byte error;
         byte[] buffer = System.Text.Encoding.Default.GetBytes(msg);

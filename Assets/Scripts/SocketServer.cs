@@ -56,6 +56,7 @@ public class SocketServer : MonoBehaviour
             if (SocketServerBase.Clients.Contains(itemClient)) return;
             for (int i = 0; i < _clientObjects.Length; i++)
             {
+                if (SocketClients[i].ClientInfo != itemClient.ClientInfo) continue;
                 if (SocketClients[i].ClientInfo == itemClient.ClientInfo) Destroy(_clientObjects[i].gameObject);
             }
             SocketClients.Remove(itemClient);
@@ -87,6 +88,11 @@ public class SocketServer : MonoBehaviour
     {
         if(string.IsNullOrEmpty(SendMsgInputField.text)) return;
         SocketServerBase.MultiSendMessage(SocketServerBase.Clients,SendMsgInputField.text);
+    }
+
+    public void SendMsg(string msg)
+    {
+        SocketServerBase.MultiSendMessage(SocketServerBase.Clients, msg);
     }
 
     public void ClearSend()

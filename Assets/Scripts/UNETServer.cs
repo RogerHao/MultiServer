@@ -84,7 +84,12 @@ public class UNETServer : MonoBehaviour {
     public void SendMsg()
     {
         if (string.IsNullOrEmpty(SendMsgInputField.text)) return;
-        UnetServerBase.SendMessage(SendMsgInputField.text);
+        UnetServerBase.SendMsg(SendMsgInputField.text);
+    }
+
+    public void SendMsg(string msg)
+    {
+        UnetServerBase.SendMsg(msg);
     }
 
     public void ClearSend()
