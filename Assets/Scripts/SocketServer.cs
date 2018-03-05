@@ -39,8 +39,6 @@ public class SocketServer : MonoBehaviour
 
     void Update()
     {
-        if (!started) return;
-
         LogText.text = LogString;
         RevText.text = RevString;
         
@@ -77,12 +75,12 @@ public class SocketServer : MonoBehaviour
 
     private void SocketServerBase_DisconnectionEvent(object sender, SocketServerBase.SocketConnectionMsg e)
     {
-        LogString = $"Client {e.ConnectionInfo} Connect!";
+        LogString = $"Client {e.ConnectionInfo} DisConnect!";
     }
 
     private void SocketServerBaseOnConnectionEvent(object sender, SocketServerBase.SocketConnectionMsg e)
     {
-        LogString = $"Client {e.ConnectionInfo} Disconnect!";
+        LogString = $"Client {e.ConnectionInfo} Connect!";
     }
 
     public void SendMsg()

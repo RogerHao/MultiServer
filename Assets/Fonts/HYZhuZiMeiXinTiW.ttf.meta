@@ -1,0 +1,23 @@
+fileFormatVersion: 2
+guid: 06e980cb7dc6a164e9a1d06c2f0562d1
+timeCreated: 1520238546
+licenseType: Free
+TrueTypeFontImporter:
+  externalObjects: {}
+  serializedVersion: 4
+  fontSize: 16
+  forceTextureCase: -2
+  characterSpacing: 0
+  characterPadding: 1
+  includeFontData: 1
+  fontName: HYZhuZiMeiXinTiW
+  fontNames:
+  - HYZhuZiMeiXinTiW
+  fallbackFontReferences: []
+  customCharacters: 
+  fontRenderingMode: 0
+  ascentCalculationMode: 1
+  useLegacyBoundsCalculation: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

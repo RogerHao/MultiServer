@@ -86,12 +86,15 @@ public class UnetServerBase : MonoBehaviour
         NetworkTransport.Shutdown();
     }
 
-    public static void SendMessage(int client, string msg)
+    public static void SendMessage(string msg)
     {
         byte error;
         byte[] buffer = System.Text.Encoding.Default.GetBytes(msg);
         int size = buffer.Length;
-        NetworkTransport.Send(hostId, client, myReliableChannelId, buffer, size, out error);
+        foreach (var client in Clients)
+        {
+            NetworkTransport.Send(hostId, client.ConnectionId, myReliableChannelId, buffer, size, out error);
+        }
     }
 
     public static void MultiSendMessage(string msg, int clientId = 0, bool self = false)
@@ -126,11 +129,10 @@ public class UnetServerBase : MonoBehaviour
         }
     }
 
-    private void Update()
+    void Update()
     {
-        while (UnetServerStarted)
+        if (UnetServerStarted)
         {
-            if (!UnetServerStarted) return;
             byte[] recBuffer = new byte[1024];
             int recHostId, connectionId, channelId, dataSize;
             byte error;

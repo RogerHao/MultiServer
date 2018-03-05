@@ -610,7 +610,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 739999964}
+      - m_Target: {fileID: 739999963}
         m_MethodName: StartUnet
         m_Mode: 1
         m_Arguments:
@@ -744,6 +744,7 @@ GameObject:
   - component: {fileID: 739999962}
   - component: {fileID: 739999963}
   - component: {fileID: 739999964}
+  - component: {fileID: 739999965}
   m_Layer: 5
   m_Name: Canvas
   m_TagString: Untagged
@@ -864,9 +865,22 @@ MonoBehaviour:
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 739999957}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f7bf79e7ee5216342861e58ca2675266, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Clients: {fileID: 2129467978}
+  client: {fileID: 114367755531058328, guid: 4b64677dcb6d0bd4cb69620ece967e3c, type: 2}
+--- !u!114 &739999965
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 739999957}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eda5a5958da58ff49a028778e96c64f7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   Clients: {fileID: 2129467978}
