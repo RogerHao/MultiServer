@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Net;
+using System.Net.Sockets;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.Networking.Types;
@@ -64,8 +65,10 @@ public class UNETServer : MonoBehaviour {
     }
     
     // Use this for initialization
-    void Start () {
-        NetworkTransport.Init();
+    void Start ()
+    {
+        UNETClientNum.text = GetIp();
+
         this.ConnectionEvent += OnConnectionEvent;
         this.DisconnectionEvent += OnDisconnectionEvent;
         this.DataEvent += OnDataEvent;
@@ -106,11 +109,12 @@ public class UNETServer : MonoBehaviour {
 
     public void StartUnetServer()
     {
+        NetworkTransport.Init();
         ConnectionConfig connectionConfig = new ConnectionConfig();
         myReliableChannelId = connectionConfig.AddChannel(QosType.Reliable);
-        int clientNum;
-        int.TryParse(UNETClientNum.text, out clientNum);
-        HostTopology hostTopology = new HostTopology(connectionConfig, clientNum);
+//        int clientNum;
+//        int.TryParse(UNETClientNum.text, out clientNum);
+        HostTopology hostTopology = new HostTopology(connectionConfig, 5);
         int portNum;
         if (!string.IsNullOrEmpty(UNETPort.text))
         {
@@ -118,8 +122,13 @@ public class UNETServer : MonoBehaviour {
         }
         else portNum = 9696;
         hostId = NetworkTransport.AddHost(hostTopology, portNum);
-        DebugInfo.text = $"Init UNET Server: Port:{portNum}, CientsNum:{clientNum}";
+        DebugInfo.text = $"Init UNET Server: Port:{portNum}, CientsNum:{5}";
         UnetEnabled = true;
+    }
+
+    public void StopUnetServer()
+    {
+        NetworkTransport.Shutdown();
     }
 
     public void Broadcast(string msg)
@@ -184,8 +193,17 @@ public class UNETServer : MonoBehaviour {
         _clientObjects = Clients.GetComponentsInChildren<ClientInstance>();
     }
 
-    private void OnApplicationQuit()
+    private string GetIp()
     {
-        NetworkTransport.Shutdown();
+        string name = Dns.GetHostName();
+        IPAddress[] ipadrlist = Dns.GetHostAddresses(name);
+        foreach (IPAddress ipa in ipadrlist)
+        {
+            if (ipa.AddressFamily == AddressFamily.InterNetwork)
+            {
+                return ipa.ToString();
+            }
+        }
+        return "";
     }
 }

@@ -98,6 +98,17 @@ public static class SocketServerBase
         stream.Write(messageBytes, 0, messageBytes.Length);
     }
 
+    public static void SendMessage(string client, string msg)
+    {
+        foreach (var itemClient in Clients)
+        {
+            if(!itemClient.ClientInfo.Contains(client)) continue;
+            NetworkStream stream = itemClient.Client.GetStream();
+            byte[] messageBytes = Encoding.UTF8.GetBytes(msg);
+            stream.Write(messageBytes, 0, messageBytes.Length);
+        }
+    }
+
     public static void MultiSendMessage(List<SocketClient> clients,string msg)
     {
         foreach (var client in clients)

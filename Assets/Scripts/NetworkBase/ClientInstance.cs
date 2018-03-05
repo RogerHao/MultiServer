@@ -12,6 +12,7 @@ public class ClientInstance : MonoBehaviour {
     public Text ClientInfoText;
     public InputField SendInputField;
     public Text RecText;
+    public string RecString;
     public Button SendButton;
     public Button ClearButton;
 
@@ -36,6 +37,11 @@ public class ClientInstance : MonoBehaviour {
     private byte _error;
     private NetworkError _networkError;
 
+    void Update()
+    {
+        RecText.text = RecString;
+    }
+
     public void ChangeState()
     {
         IsActive = !IsActive;
@@ -46,7 +52,7 @@ public class ClientInstance : MonoBehaviour {
     public void ClearData()
     {
         SendInputField.text = "";
-        RecText.text = "";
+        RecString = "";
     }
 
     public void SendData()
@@ -54,8 +60,15 @@ public class ClientInstance : MonoBehaviour {
         byte[] buffer = System.Text.Encoding.UTF8.GetBytes(SendInputField.text);
         int size = buffer.Length;
         if (size == 0) return;
-        NetworkTransport.Send(HostId, ConnectionId, ChannelId, buffer, size, out _error);
-        _networkError = (NetworkError)_error;
-    }
 
+        if (HostId == 100)
+        {
+            SocketServerBase.SendMessage(clientInfo.Split(':')[1], SendInputField.text);
+        }
+        else
+        {
+            NetworkTransport.Send(HostId, ConnectionId, ChannelId, buffer, size, out _error);
+            _networkError = (NetworkError)_error;
+        }
+    }
 }

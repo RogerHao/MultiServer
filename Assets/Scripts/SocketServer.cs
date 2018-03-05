@@ -1,93 +1,149 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine.UI;
 
-public class SocketServer : MonoBehaviour {
-    Socket socket;
-    EndPoint clientEnd;
-    IPEndPoint ipEnd;
-    string recvStr;
-    private CancellationTokenSource socketCancellationTokenSource = new CancellationTokenSource();
+public class SocketServer : MonoBehaviour
+{
+    public InputField IpInputField;
+    public InputField PortInputField;
+    public InputField SendMsgInputField;
+    public Text RevText;
+    private string RevString;
 
-    public InputField SocketIP;
-    public InputField SocketPort;
-    public InputField SocketSendMsg;
-    public Text SocketRecMsg;
-    public Text DebugInfo;
+    public Text LogText;
+    private string LogString;
 
     public GameObject Clients;
-    public ClientInstance Client;
+    public ClientInstance client;
     private ClientInstance[] _clientObjects;
+    private List<SocketServerBase.SocketClient> SocketClients = new List<SocketServerBase.SocketClient>();
 
-    // Use this for initialization
-    void Start ()
+    private bool started = false;
+
+    void Start()
     {
-        socketCancellationTokenSource.Cancel();
+        IpInputField.text = GetIp();
+        
+        SocketServerBase.ConnectionEvent += SocketServerBaseOnConnectionEvent;
+        SocketServerBase.DisconnectionEvent += SocketServerBase_DisconnectionEvent;
+        SocketServerBase.DataEvent += SocketServerBaseOnDataEvent;
     }
-	// Update is called once per frame
-	void Update () {
-		
-	}
 
-    public void StartSocketServer()
+    void Update()
     {
-        if(!socketCancellationTokenSource.IsCancellationRequested) return;
-        int portNum;
-        if (!string.IsNullOrEmpty(SocketPort.text))
+        if (!started) return;
+
+        LogText.text = LogString;
+        RevText.text = RevString;
+        
+        foreach (var itemClient in SocketServerBase.Clients)
         {
-            int.TryParse(SocketPort.text, out portNum);
+            if (SocketClients.Contains(itemClient)) continue;
+            SocketClients.Add(itemClient);
+            ClientInstance newClientInstance = Instantiate(client, Clients.transform);
+            newClientInstance.ClientInfo = itemClient.ClientInfo;
+            newClientInstance.HostId = 100;
+            _clientObjects = Clients.GetComponentsInChildren<ClientInstance>();
         }
-        else portNum = 9695;
-        System.Net.IPAddress ipaddress = System.Net.IPAddress.Parse(SocketIP.text);
-        ipEnd = new IPEndPoint(ipaddress, portNum);
-        socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-        socket.Bind(ipEnd);
-        DebugInfo.text = string.Format("Start Socket Server IP:{0}, Port:{1}", ipEnd.Address, ipEnd.Port);
-
-        IPEndPoint sender = new IPEndPoint(IPAddress.Any, 0);
-        clientEnd = (EndPoint)sender;
-
-        socketCancellationTokenSource = new CancellationTokenSource();
-        Task.Run(() => SocketReceive(), socketCancellationTokenSource.Token);
-    }
-
-    private void SocketReceive()
-    {
-        while (!socketCancellationTokenSource.IsCancellationRequested)
+        foreach (var itemClient in SocketClients)
         {
-            var recvData = new byte[1024];
-            var recvLen = socket.ReceiveFrom(recvData, ref clientEnd);
-            recvStr = Encoding.ASCII.GetString(recvData, 0, recvLen);
+            if (SocketServerBase.Clients.Contains(itemClient)) return;
+            for (int i = 0; i < _clientObjects.Length; i++)
+            {
+                if (SocketClients[i].ClientInfo == itemClient.ClientInfo) Destroy(_clientObjects[i].gameObject);
+            }
+            SocketClients.Remove(itemClient);
         }
     }
 
-    public void SocketSend()
+    private void SocketServerBaseOnDataEvent(object sender, SocketServerBase.SocketDataMsg socketDataMsg)
     {
-        SocketSend(SocketSendMsg.text);
+        RevString = socketDataMsg.Msg;
+        LogString = $"Msg: {socketDataMsg.Msg} From: {socketDataMsg.ClientInfo}!";
+        foreach (var client in _clientObjects)
+        {
+            if(client.ClientInfo == socketDataMsg.ClientInfo)
+            client.RecString = socketDataMsg.Msg;
+        }
     }
 
-    public void SocketSend(string sendStr)
+    private void SocketServerBase_DisconnectionEvent(object sender, SocketServerBase.SocketConnectionMsg e)
     {
-        var sendData = new byte[1024];
-        sendData = Encoding.ASCII.GetBytes(sendStr);
-        socket.SendTo(sendData, sendData.Length, SocketFlags.None, clientEnd);
+        LogString = $"Client {e.ConnectionInfo} Connect!";
     }
 
-    public void StopSocketServer()
+    private void SocketServerBaseOnConnectionEvent(object sender, SocketServerBase.SocketConnectionMsg e)
     {
-        if (socketCancellationTokenSource.IsCancellationRequested) return;
-        socketCancellationTokenSource.Cancel();
-        socket.Close();
+        LogString = $"Client {e.ConnectionInfo} Disconnect!";
     }
 
-    private void OnApplicationQuit()
+    public void SendMsg()
     {
-        StopSocketServer();
+        if(string.IsNullOrEmpty(SendMsgInputField.text)) return;
+        SocketServerBase.MultiSendMessage(SocketServerBase.Clients,SendMsgInputField.text);
+    }
+
+    public void ClearSend()
+    {
+        SendMsgInputField.text = "";
+//        RevText.text = "";
+    }
+
+    public void ClearRec()
+    {
+//        SendMsgInputField.text = "";
+        RevString = "";
+    }
+
+    public void StartSocket()
+    {
+        if (started)
+        {
+            LogString = "Socket Started";
+            return;
+        }
+        
+        int port;
+        int.TryParse(PortInputField.text, out port);
+        SocketServerBase.StartSocketServer(port);
+        started = true;
+
+        LogString = "Socket Start";
+    }
+
+    public void StopSocket()
+    {
+        if (!started)
+        {
+            LogString = "Socket Stopped";
+            return;
+        }
+
+        SocketServerBase.StopSocketServer();
+        started = false;
+
+        LogString = "Socket Stop";
+    }
+
+    private string GetIp()
+    {
+        string name = Dns.GetHostName();
+        IPAddress[] ipadrlist = Dns.GetHostAddresses(name);
+        foreach (IPAddress ipa in ipadrlist)
+        {
+            if (ipa.AddressFamily == AddressFamily.InterNetwork)
+            {
+                return ipa.ToString();
+            }
+        }
+        return "";
     }
 }
