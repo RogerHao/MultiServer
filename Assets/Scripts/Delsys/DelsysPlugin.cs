@@ -85,14 +85,14 @@ namespace DelsysPlugin
 #endregion
 
 
-        public void InitClassifier(int getsture,int channel,int gestureSample,int gestureWhole, int gestureCut)
+        public void InitClassifier(int getsture,int channel,int gestureSample,int gestureWhole, int gestureCut,int winLength=300,int stepLength = 100)
         {
             ChannelNum = channel;
             GestureNum = getsture;
             GestureSampleNum = gestureSample;
             GestureWholeNum = gestureWhole;
             GestureCutNum = gestureCut;
-            _emgClassifier = new Classifier(300,100,ChannelNum, GestureNum);
+            _emgClassifier = new Classifier(winLength, stepLength,ChannelNum, GestureNum);
             EmgData.Clear();
             emgCancellationTokenSource.Cancel();
             predictCancellationTokenSource.Cancel();
@@ -146,8 +146,12 @@ namespace DelsysPlugin
                     _sensors.Add(!queryResponse.Contains("INVALID"));
                 }
                 SendCommand("UPSAMPLE OFF");
-
-                return _sensors.Count == ChannelNum ? "Success" : "NotEnoughSensor";
+                string result = "";
+                foreach (var sensor in _sensors)
+                {
+                    result += sensor ? "True:" : "False:";
+                }
+                return result;
             }
             catch (Exception e)
             {
@@ -347,12 +351,12 @@ namespace DelsysPlugin
             var iColCount = _trainData.Count;
             foreach (var row in _trainData)
             {
-                for (var i = 0; i < row.Count; i++)
+                foreach (var data in row)
                 {
-                    if (!Convert.IsDBNull(row[i]))
+                    if (!Convert.IsDBNull(data))
                     {
+                        sw.Write(data.ToString());
                         sw.Write(",");
-                        sw.Write(row[i].ToString());
                     }
                 }
                 sw.Write(sw.NewLine);
@@ -497,7 +501,7 @@ namespace DelsysPlugin
                         for (int sn = 0; sn < 16; sn++)
                         {
                             var oneData = reader.ReadSingle();
-                            if (sn < ChannelNum) rowData.Add(oneData);
+                            if (_sensors[sn]) rowData.Add(oneData);
                         }
                         lock (emgLock) emgDataList.Add(rowData);
                         if(emgDataList.Count>=number && number!=0) StopGetEmgDataAsync();

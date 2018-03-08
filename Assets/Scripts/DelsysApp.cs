@@ -27,6 +27,8 @@ public class DelsysApp : MonoBehaviour
     public Text RealResult;
     public Text Rate;
 
+    public Text UserNow;
+
     public Image[] GestImages;
 
     
@@ -45,7 +47,6 @@ public class DelsysApp : MonoBehaviour
     // Use this for initialization
     void Start ()
     {
-        InitSolver();
         SocketServerBase.DataEvent += SocketServerBaseOnDataEvent;
         UnetServerBase.DataEvent += UnetServerBase_DataEvent;
     }
@@ -102,17 +103,13 @@ public class DelsysApp : MonoBehaviour
 
     public void ConnectToDelsys()
     {
-        delsysSolver.Connect();
+        var res = delsysSolver.Connect();
+        Debug.Log(res);
     }
 
     public void DisconnectToDelsys()
     {
         delsysSolver.Disconnect();
-    }
-
-    public void InitSolver()
-    {
-        delsysSolver.InitClassifier(3,4,3000,5000,1000);
     }
 
     public void StartPre()
@@ -148,25 +145,16 @@ public class DelsysApp : MonoBehaviour
 
     public void SaveData()
     {
-        delsysSolver.SaveDataToCsv("", DateTime.Now.ToString("yyyyMMddhhmmss"), null);
-    }
-
-    public void SetUser()
-    {
-        
-    }
-
-    public void SetTrain()
-    {
-        
+        delsysSolver.SaveDataToCsv("",$"_{DateTime.Now.ToString("yyyyMMddhhmmss")}_{UserNow.text}", null);
     }
 
     public void StartTrial()
     {
         int g, c,s;
         int.TryParse(GestureNumField.text, out g);
-        int.TryParse(GestureNumField.text, out c);
+        int.TryParse(ChannelNumField.text, out c);
         int.TryParse(SampleCountField.text, out s);
         delsysSolver.InitClassifier(g,c,s-2000,s,1000);
+
     }
 }

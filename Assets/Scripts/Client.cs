@@ -25,17 +25,7 @@ public class Client : MonoBehaviour
         NetworkTransport.Init();
     }
 
-    public void StartClient()
-    {
-        ConnectionConfig connectionConfig = new ConnectionConfig();
-        myReliableChannelId = connectionConfig.AddChannel(QosType.Reliable);
-        HostTopology hostTopology = new HostTopology(connectionConfig, 2);
-        hostId = NetworkTransport.AddHost(hostTopology);
-        myConnectionId = NetworkTransport.Connect(hostId, "192.168.1.100", 9696, 0, out error);
-        Debug.Log(myConnectionId);
-    }
-	// Update is called once per frame
-	void Update ()
+    void Update ()
 	{
 	    recBuffer = new byte[1024];
         NetworkEventType recData = NetworkTransport.Receive(out recHostId, out connectionId, out channelId, recBuffer, bufferSize, out dataSize, out error);
@@ -54,8 +44,19 @@ public class Client : MonoBehaviour
 	            Debug.Log(string.Format("disconnection: recHostId:{0}, connectionOId:{1},channelId:{2},error:{3}", recHostId, connectionId, channelId, error));
 	            break;
 	    }
-    }
+        }
 
+    public void StartClient()
+    {
+        ConnectionConfig connectionConfig = new ConnectionConfig();
+        myReliableChannelId = connectionConfig.AddChannel(QosType.Reliable);
+        HostTopology hostTopology = new HostTopology(connectionConfig, 2);
+        hostId = NetworkTransport.AddHost(hostTopology);
+        myConnectionId = NetworkTransport.Connect(hostId, "192.168.1.100", 9696, 0, out error);
+        Debug.Log(myConnectionId);
+    }
+	// Update is called once per frame
+	
     public void SendMessage()
     {
         byte[] buffer = System.Text.Encoding.UTF8.GetBytes(InputField.text);
