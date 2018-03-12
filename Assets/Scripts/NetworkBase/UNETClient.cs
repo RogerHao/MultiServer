@@ -20,20 +20,20 @@ public class UNETClient : MonoBehaviour {
     public Image[] GestImages;
 
     private string LogString { get; set; }
-    private UnetClientBase UnetClientBase;
+    private UnetClientBase unetClientBase;
 
 
     // Use this for initialization
     void Start () {
-        UnetClientBase = gameObject.GetComponent<UnetClientBase>();
+        unetClientBase = gameObject.GetComponent<UnetClientBase>();
         Debug.Log(GetIp());
         IpInput.text = GetIp();
         int.TryParse(PortInput.text, out port);
         if (port < 1000) port = 9696;
 
-        UnetClientBase.ConnectionEvent += UnetClientBase_ConnectionEvent;
-        UnetClientBase.DisconnectionEvent += UnetClientBase_DisconnectionEvent;
-        UnetClientBase.DataEvent += UnetClientBase_DataEvent;
+        unetClientBase.ConnectionEvent += UnetClientBase_ConnectionEvent;
+        unetClientBase.DisconnectionEvent += UnetClientBase_DisconnectionEvent;
+        unetClientBase.DataEvent += UnetClientBase_DataEvent;
     }
 
     private void UnetClientBase_DataEvent(object sender, UnetClientBase.UnetDataMsg e)
@@ -64,17 +64,17 @@ public class UNETClient : MonoBehaviour {
     }
     public void ConnectedToServer()
     {
-        UnetClientBase.ConnectToServer(IpInput.text,port);
+        unetClientBase.ConnectToServer(IpInput.text,port);
     }
 
     public void DisConnectedToServer()
     {
-        UnetClientBase.DisconnectToServer();
+        unetClientBase.DisconnectToServer();
     }
 
     public void SendMessageToServer()
     {
-        UnetClientBase.SendMessageToServer(MsgInput.text);
+        unetClientBase.SendMessageToServer(MsgInput.text);
     }
 
     private string GetIp()

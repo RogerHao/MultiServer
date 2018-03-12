@@ -384,6 +384,26 @@ public class HandPhysicsController : MonoBehaviour
     }
 
     /// <summary>
+    /// Starts bending all fingers based on <see cref="HandPhysicsExtenstions.FingersConfig.BendSpeed"/>
+    /// </summary>
+    public void StartBendFingersAmount()
+    {
+        for (int i = 0; i < Parts.Fingers.Length; i++)
+            Parts.Fingers[i].StartBendingAmount();
+    }
+
+    /// <summary>
+    /// Stops bending all fingers
+    /// </summary>
+    public void StopBendFingersAmount()
+    {
+        for (int i = 0; i < Parts.Fingers.Length; i++)
+            Parts.Fingers[i].StopBendingAmount();
+
+        DetachObject();
+    }
+
+    /// <summary>
     /// Starts bending certain finger based on <see cref="HandPhysicsExtenstions.FingersConfig.BendSpeed"/>
     /// </summary>
     public void StartBendFinger(FingerType fingerType)

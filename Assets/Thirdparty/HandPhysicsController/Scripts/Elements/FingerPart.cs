@@ -51,6 +51,11 @@ namespace HandPhysicsExtenstions
         public bool IsRotationAllowed { get; internal set; }
 
         /// <summary>
+        /// for amount control
+        /// </summary>
+        public bool IsSequence { get; set; }
+
+        /// <summary>
         /// Returns true if <see cref="Trigger"/> collides with any other <see cref="Rigidbody"/>
         /// </summary>
         public bool IsTouchingAnyObject
@@ -99,7 +104,17 @@ namespace HandPhysicsExtenstions
 
         void Update()
         {
-            ControlPart();
+            if(!IsSequence) ControlPart();
+        }
+
+        public void ControlPartAmount(bool close)
+        {
+            if (IsTouchingAnyObject)
+                DisallowRotationRecursively();
+
+            if (close) IncreaseRotationValue();
+            else DecreaseRotationValue();
+            transform.localRotation = Quaternion.Lerp(StartRotation, TargetRotation, RotationCurve.Evaluate(RotationValue));
         }
 
         void ControlPart()
@@ -129,6 +144,19 @@ namespace HandPhysicsExtenstions
             transform.localRotation = Quaternion.Lerp(StartRotation, TargetRotation, RotationCurve.Evaluate(RotationValue));
         }
 
+        public void IncreaseRotationValue()
+        {
+            switch (Controller.Fingers.RotationMode)
+            {
+                case FingerRotationMode.Linear:
+                    RotationValue += Time.deltaTime * Controller.Fingers.BendSpeed;
+                    break;
+                case FingerRotationMode.Smooth:
+                    RotationValue = Mathf.SmoothStep(RotationValue, 1, Time.deltaTime * Controller.Fingers.BendSpeed);
+                    break;
+            }
+        }
+
         void IncreaseRotationValue(float amount)
         {
             switch (Controller.Fingers.RotationMode)
@@ -138,6 +166,19 @@ namespace HandPhysicsExtenstions
                     break;
                 case FingerRotationMode.Smooth:
                     RotationValue = Mathf.SmoothStep(RotationValue, 1, amount);
+                    break;
+            }
+        }
+
+        public void DecreaseRotationValue()
+        {
+            switch (Controller.Fingers.RotationMode)
+            {
+                case FingerRotationMode.Linear:
+                    RotationValue -= Time.deltaTime * Controller.Fingers.BendSpeed;
+                    break;
+                case FingerRotationMode.Smooth:
+                    RotationValue = Mathf.SmoothStep(RotationValue, 0, Time.deltaTime * Controller.Fingers.BendSpeed);
                     break;
             }
         }
@@ -154,13 +195,13 @@ namespace HandPhysicsExtenstions
                     break;
             }
         }
-        
+
+
         float GetRotationAmount()
         {
             return Time.deltaTime * Controller.Fingers.BendSpeed;
         }
-
-
+        
         internal void DisallowRotationRecursively()
         {
             IsRotationAllowed = false;

@@ -41,23 +41,48 @@ namespace HandPhysicsExtenstions
                 return;
 
             for (int i = 0; i < Parts.Length; i++)
+            {
+                Parts[i].IsSequence = false;
                 Parts[i].IsRotating = true;
+            }
 
             IsBending = true;
         }
 
+        public void StartBendingAmount()
+        {
+            for (int i = 0; i < Parts.Length; i++)
+            {
+                Parts[i].IsSequence = true;
+                Parts[i].ControlPartAmount(true);
+            }
+        }
+        
         public void StopBending()
         {
+            
             if (!IsBending)
                 return;
 
             for (int i = 0; i < Parts.Length; i++)
+            {
+                Parts[i].IsSequence = false;
                 Parts[i].IsRotating = false;
+            }
+                
 
             IsBending = false;
             IsHoldingObject = false;
         }
-        
+        public void StopBendingAmount()
+        {
+            for (int i = 0; i < Parts.Length; i++)
+            {
+                Parts[i].IsSequence = true;
+                Parts[i].ControlPartAmount(false);
+            }
+        }
+
         /// <summary>
         /// Returns all rigidbodies which collides with this finger
         /// </summary>
