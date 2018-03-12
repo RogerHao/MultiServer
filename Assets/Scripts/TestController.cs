@@ -95,10 +95,6 @@ public class TestController : MonoBehaviour {
             case 10:
                 myHandController.IResetHand();
                 break;
-
-            case 101:
-                GestureCom1();
-                break;
         }
     }
 
@@ -125,10 +121,55 @@ public class TestController : MonoBehaviour {
         unetClientBase.SendMessageToServer("");
     }
 
+    #region Combination
     public void GestureCom1()
     {
-        myHandController.ISupination();
         myHandController.IFlexion();
         myHandController.IClose();
+        myHandController.IPronation();
     }
+    public void GestureCom2()
+    {
+        myHandController.IExtension();
+        myHandController.IClose();
+        myHandController.IPronation();
+    }
+    public void GestureCom3()
+    {
+        myHandController.IExtension();
+        myHandController.IOpen();
+        myHandController.IPronation();
+    }
+    public void GestureCom4()
+    {
+        myHandController.IFlexion();
+        myHandController.IOpen();
+        myHandController.IPronation();
+    }
+    public void GestureCom5()
+    {
+        myHandController.IFlexion();
+        myHandController.IClose();
+        myHandController.ISupination();
+    }
+    public void GestureCom6()
+    {
+        myHandController.IExtension();
+        myHandController.IClose();
+        myHandController.ISupination();
+    }
+    public void GestureCom7()
+    {
+        myHandController.IExtension();
+        myHandController.IOpen();
+        myHandController.ISupination();
+    }
+    public void GestureCom8()
+    {
+        myHandController.IFlexion();
+        myHandController.IOpen();
+        myHandController.ISupination();
+    }
+    #endregion
+
 }

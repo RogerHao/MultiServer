@@ -19,13 +19,18 @@ namespace DelsysPlugin
         public int GestureCutNum { get; private set; }
         public int GestureSampleNum { get; private set; }
         public int GestureWholeNum { get; private set; }
+        public int WinLength { get; private set; }
+        public int StepLength { get; private set; }
+
 
         public double RestState { get; private set; }
         public bool ModelGenerated { get; private set; }
         public bool IsPredicting { get; private set; }
         public int GestureResult { get; private set; }
+        public event EventHandler<int> ResultGenerated;
 
         public static List<List<double>> EmgData = new List<List<double>>();
+        public static List<List<double>> ResultData = new List<List<double>>();
         public int DataNowCount => emgDataList.Count;
         public int DataTotal => EmgData.Count;
 
@@ -85,14 +90,16 @@ namespace DelsysPlugin
 #endregion
 
 
-        public void InitClassifier(int getsture,int channel,int gestureSample,int gestureWhole, int gestureCut,int winLength=300,int stepLength = 100)
+        public void InitClassifier(int getsture,int channel,int gestureSample,int gestureWhole, int gestureCut,int winLength=600,int stepLength = 200)
         {
             ChannelNum = channel;
             GestureNum = getsture;
             GestureSampleNum = gestureSample;
             GestureWholeNum = gestureWhole;
             GestureCutNum = gestureCut;
-            _emgClassifier = new Classifier(winLength, stepLength,ChannelNum, GestureNum);
+            WinLength = winLength;
+            StepLength = stepLength;
+            _emgClassifier = new Classifier(WinLength, StepLength, ChannelNum, GestureNum);
             EmgData.Clear();
             emgCancellationTokenSource.Cancel();
             predictCancellationTokenSource.Cancel();
@@ -119,8 +126,8 @@ namespace DelsysPlugin
         public int TestModel(int startIndex)
         {
             if (!ModelGenerated) return -1;
-            if (startIndex + 300 > EmgData.Count) return -2;
-            return _emgClassifier.Predict(EmgData.GetRange(startIndex, 300));
+            if (startIndex + WinLength > EmgData.Count) return -2;
+            return _emgClassifier.Predict(EmgData.GetRange(startIndex, WinLength));
         }
 
         public string Connect(string serverUrl = "localhost")
@@ -337,17 +344,18 @@ namespace DelsysPlugin
             return "OK";
         }
 
-        public void SaveDataToCsv(string filePath, string commment,List<List<double>> _trainData)
+        public void SaveDataToCsv(string filePath, string commment,bool emg)
         {
-            if (_trainData == null) _trainData = EmgData;
+            var _trainData = new List<List<double>>();
+            _trainData = emg ? EmgData : ResultData;
             if (string.IsNullOrEmpty(filePath)) filePath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-            if (!File.Exists($"{filePath}//emgdata"+commment+".csv"))
+            if (!File.Exists($"{filePath}//{commment}.csv"))
             {
-                FileStream fs = new FileStream($"{filePath}//emgdata" + commment + ".csv", FileMode.Create, FileAccess.Write);
+                FileStream fs = new FileStream($"{filePath}//{commment}.csv", FileMode.Create, FileAccess.Write);
                 fs.Close();
                 fs.Dispose();
             }
-            var sw = new StreamWriter($"{filePath}//emgdata" + commment + ".csv", false);
+            var sw = new StreamWriter($"{filePath}//{commment}.csv", false);
             var iColCount = _trainData.Count;
             foreach (var row in _trainData)
             {
@@ -361,6 +369,8 @@ namespace DelsysPlugin
                 }
                 sw.Write(sw.NewLine);
             }
+            if(emg) EmgData?.Clear();
+            else ResultData?.Clear();
             sw.Close();
             sw.Dispose();
         }
@@ -434,10 +444,10 @@ namespace DelsysPlugin
             {
                 try
                 {
-                    if (emgDataList.Count < 300) continue;
+                    if (emgDataList.Count < WinLength) continue;
                     List<List<double>> dataWin = new List<List<double>>();
-                    dataWin = emgDataList.GetRange(emgDataList.Count - 300, 300);
-                    lock (emgLock) emgDataList.RemoveRange(emgDataList.Count - 300, 300);
+                    dataWin = emgDataList.GetRange(emgDataList.Count - WinLength, WinLength);
+                    lock (emgLock) emgDataList.RemoveRange(emgDataList.Count - WinLength, WinLength);
                     GestureResult = _emgClassifier.Predict(dataWin);
                 }
                 catch (Exception)
@@ -504,6 +514,7 @@ namespace DelsysPlugin
                             if (_sensors[sn]) rowData.Add(oneData);
                         }
                         lock (emgLock) emgDataList.Add(rowData);
+                        if(IsPredicting) EmgData.Add(rowData);
                         if(emgDataList.Count>=number && number!=0) StopGetEmgDataAsync();
                     }
                     catch (Exception)
@@ -520,11 +531,15 @@ namespace DelsysPlugin
             {
                 try
                 {
-                    if (emgDataList.Count < 300) continue;
+                    if (emgDataList.Count < WinLength) continue;
                     List<List<double>> dataWin = new List<List<double>>();
-                    dataWin = emgDataList.GetRange(emgDataList.Count - 300, 300);
-                    lock (emgLock) emgDataList.RemoveRange(emgDataList.Count - 300, 300);
+                    dataWin = emgDataList.GetRange(emgDataList.Count - WinLength, WinLength);
+                    lock (emgLock) emgDataList.RemoveRange(emgDataList.Count - WinLength, WinLength);
                     GestureResult = _emgClassifier.Predict(dataWin);
+                    ResultGenerated?.Invoke(null,GestureResult);
+                    List<double> resultDoubles = new List<double>(){0,0,0,0,0,0,0};
+                    resultDoubles[GestureResult] = 1;
+                    ResultData.Add(resultDoubles);
                 }
                 catch (Exception)
                 {

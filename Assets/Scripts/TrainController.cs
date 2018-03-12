@@ -61,52 +61,60 @@ public class TrainController : MonoBehaviour
 	    _serverCommandNew = false;
 	    switch (_serverCommand)
 	    {
-	        case 0:
+            case 10:
+                IntroText.text = "The Training Process is Starting";
+                break;
+	        case 100:
 	            myHandController.Rest();
 	            IntroText.text = myHandController.GestureIntro[MyHandController.GestureState.NoMovement];
                 break;
-	        case 1:
-	        case 11:
+	        case 101:
 	            IntroText.text = myHandController.GestureIntro[MyHandController.GestureState.Close];
 	            myHandController.IClose();
 	            break;
-	        case 2:
-	        case 22:
+	        case 102:
 	            IntroText.text = myHandController.GestureIntro[MyHandController.GestureState.Open];
 	            myHandController.IOpen();
 	            break;
-	        case 3:
-	        case 33:
+	        case 103:
 	            IntroText.text = myHandController.GestureIntro[MyHandController.GestureState.Supination];
 	            myHandController.ISupination();
 	            break;
-	        case 4:
-	        case 44:
+	        case 104:
 	            IntroText.text = myHandController.GestureIntro[MyHandController.GestureState.Pronation];
 	            myHandController.IPronation();
 	            break;
-	        case 5:
-	        case 55:
+	        case 105:
 	            IntroText.text = myHandController.GestureIntro[MyHandController.GestureState.Flexion];
 	            myHandController.IFlexion();
 	            break;
-	        case 6:
-	        case 66:
+	        case 106:
 	            IntroText.text = myHandController.GestureIntro[MyHandController.GestureState.Extension];
 	            myHandController.IExtension();
 	            break;
-	    }
+	        case 1010:
+	            IntroText.text = "The Trainning Process is Over, Waitting for next process";
+	            myHandController.Rest();
+	            break;
+            default:
+                IntroText.text = $"Msg is: {_serverCommand}";
+                break;
+        }
     }
 
     public IEnumerator ConnectedToServer()
     {
-        yield return new WaitForSeconds(2);
+        yield return new WaitForSeconds(1);
         unetClientBase.ConnectToServer(Ip, Port);
         var count = 0;
-        while (!_connected && count <10)
+        while (count <10)
         {
-            yield return new WaitForSeconds(5);
-            unetClientBase.ConnectToServer(Ip, Port);
+            yield return new WaitForSeconds(10);
+            if (!_connected)
+            {
+                unetClientBase.ConnectToServer(Ip, Port);
+                yield break;
+            }
             count++;
         }
     }
@@ -120,5 +128,4 @@ public class TrainController : MonoBehaviour
     {
         unetClientBase.SendMessageToServer("");
     }
-
 }

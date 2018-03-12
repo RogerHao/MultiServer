@@ -18,6 +18,7 @@ public class UNETServer : MonoBehaviour {
     public Text LogText;
     private string LogString;
 
+    public int ClientCount => _clientObjects.Length;
     public GameObject Clients;
     public ClientInstance client;
     private ClientInstance[] _clientObjects;
