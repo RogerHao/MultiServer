@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Assets.ProgressBars.Scripts;
 using DelsysPlugin;
+using MathNet.Numerics;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -46,6 +47,7 @@ public class DelsysApp : MonoBehaviour
     private bool isPredicting = false;
     private bool _newResultBool;
     private int _newResutl;
+    private double _newMavResutl;
 
     // Use this for initialization
     void Start ()
@@ -55,28 +57,37 @@ public class DelsysApp : MonoBehaviour
         delsysSolver.ResultGenerated += DelsysSolverOnResultGenerated;
     }
 
-    private void DelsysSolverOnResultGenerated(object sender, int result)
+    private void DelsysSolverOnResultGenerated(object sender, double[] doubles)
     {
         _newResultBool = true;
-        _newResutl = result;
+        _newResutl = Convert.ToInt32(doubles[0]);
+        _newMavResutl = doubles[1];
     }
 
     private void UnetServerBase_DataEvent(object sender, UnetServerBase.UnetDataMsg e)
     {
-        var res = e.Msg.Contains("delsys") ? delsysSolver.SendCommand(e.Msg) : e.Msg;
-        Broadcast(res);
+//        var res = e.Msg.Contains("delsys") ? delsysSolver.SendCommand(e.Msg) : e.Msg;
+//        Broadcast(res);
         int command;
         int.TryParse(e.Msg, out command);
         switch (command)
         {
-                
+            case 205:
+                StartTesting2DProcess();
+                break;
+            case 206:
+                StopTesting2DProcess();
+                break;
+            default:
+                Log = command.ToString();
+                break;
         }
     }
 
     private void SocketServerBaseOnDataEvent(object sender, SocketServerBase.SocketDataMsg e)
     {
         var res = e.Msg.Contains("delsys") ? delsysSolver.SendCommand(e.Msg) : e.Msg;
-        Broadcast(res);
+//        Broadcast(res);
     }
 
     void OnGUI()
@@ -90,24 +101,24 @@ public class DelsysApp : MonoBehaviour
             DataAmountNow.text = delsysSolver.DataNowCount.ToString();
             DataTotalNow.text = delsysSolver.DataTotal.ToString();
             RealResult.text = _realResult.ToString();
-            if (delsysSolver.DataTotal / 6000 == _lastResult || delsysSolver.DataTotal / 6000 >= GestImages.Length) return;
-            _lastResult += 1;
-            GestImages[_lastResult - 1].enabled = false;
-            GestImages[_lastResult>7?7:_lastResult].enabled = true;
+//            if (delsysSolver.DataTotal / 6000 == _lastResult || delsysSolver.DataTotal / 6000 >= GestImages.Length) return;
+//            _lastResult += 1;
+//            GestImages[_lastResult - 1>=6? 6:_lastResult - 1].enabled = false;
+//            GestImages[_lastResult>=6?6:_lastResult].enabled = true;
         }
         else
         {
             if (_newResultBool)
             {
-                UnetServer.SendMsg(_newResutl.ToString());
+                UnetServer.SendMsg($"{_newResutl},{_newMavResutl}");
                 _newResultBool = false;
             }
             PreResult.text = delsysSolver.GestureResult.ToString();
             Rate.text = $"{_rate:F} %";
-            if (delsysSolver.GestureResult == _lastResult) return;
-            GestImages[_lastResult].enabled = false;
-            _lastResult = delsysSolver.GestureResult;
-            GestImages[_lastResult].enabled = true;
+//            if (delsysSolver.GestureResult == _lastResult) return;
+//            GestImages[_lastResult].enabled = false;
+//            _lastResult = delsysSolver.GestureResult;
+//            GestImages[_lastResult].enabled = true;
         }
     }
 
@@ -175,7 +186,7 @@ public class DelsysApp : MonoBehaviour
         int.TryParse(GestureNumField.text, out g);
         int.TryParse(ChannelNumField.text, out c);
         int.TryParse(SampleCountField.text, out s);
-        delsysSolver.InitClassifier(g,c,s-2000,s,1000,600,200);
+        delsysSolver.InitClassifier(g,c,s-2000,s,1000,300,100);
 
         if (UnetServer.ClientCount == 0)
         {
@@ -199,7 +210,7 @@ public class DelsysApp : MonoBehaviour
             UnetServer.SendMsg($"100");
             yield return new WaitForSeconds(4f);
         }
-        UnetServer.SendMsg("107");
+        UnetServer.SendMsg("1010");
         delsysSolver.GenerateModel();
     }
 

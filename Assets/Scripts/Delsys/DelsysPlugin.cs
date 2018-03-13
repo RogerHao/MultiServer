@@ -27,10 +27,13 @@ namespace DelsysPlugin
         public bool ModelGenerated { get; private set; }
         public bool IsPredicting { get; private set; }
         public int GestureResult { get; private set; }
-        public event EventHandler<int> ResultGenerated;
+        public double GestureMavResult { get; private set; }
+        public event EventHandler<double[]> ResultGenerated;
 
         public static List<List<double>> EmgData = new List<List<double>>();
         public static List<List<double>> ResultData = new List<List<double>>();
+        public static List<List<double>> ClassMavData = new List<List<double>>();
+        public static List<double> ClassMav = new List<double>();
         public int DataNowCount => emgDataList.Count;
         public int DataTotal => EmgData.Count;
 
@@ -101,15 +104,15 @@ namespace DelsysPlugin
             StepLength = stepLength;
             _emgClassifier = new Classifier(WinLength, StepLength, ChannelNum, GestureNum);
             EmgData.Clear();
+            ClassMav.Clear();
             emgCancellationTokenSource.Cancel();
             predictCancellationTokenSource.Cancel();
         }
 
-
         public async void GetRestState()
         {
             if(_emgClassifier==null) return;
-            RestState = _emgClassifier.RestState(await Task.Run(() => GetAmouuntEmgData(GestureWholeNum, GestureCutNum, GestureSampleNum)));
+            RestState = _emgClassifier.GetMAV(await Task.Run(() => GetAmouuntEmgData(GestureWholeNum, GestureCutNum, GestureSampleNum)));
         }
 
         public async void GenerateModel()
@@ -270,6 +273,7 @@ namespace DelsysPlugin
             emgCancellationTokenSource = new CancellationTokenSource();
             await Task.Run(() => EmgCetter(amount), emgCancellationTokenSource.Token);
             EmgData.AddRange(emgDataList.GetRange(startCut, sample));
+            ClassMav.Add(_emgClassifier.GetMAV(emgDataList));
             SendCommand(COMMAND_STOP);
             emgStream.Close();
             emgSocket.Close();
@@ -282,11 +286,13 @@ namespace DelsysPlugin
             predictCancellationTokenSource = new CancellationTokenSource();
             StartGetEmgDateAsync();
             Task.Run(() => Predictter(), predictCancellationTokenSource.Token);
+            IsPredicting = true;
             return 0;
         }
         public int StopPredictAsync()
         {
             if (predictCancellationTokenSource.IsCancellationRequested) return -1;
+            IsPredicting = false;
             predictCancellationTokenSource.Cancel();
             StopGetEmgDataAsync(true);
             return 0;
@@ -534,11 +540,14 @@ namespace DelsysPlugin
                     if (emgDataList.Count < WinLength) continue;
                     List<List<double>> dataWin = new List<List<double>>();
                     dataWin = emgDataList.GetRange(emgDataList.Count - WinLength, WinLength);
-                    lock (emgLock) emgDataList.RemoveRange(emgDataList.Count - WinLength, WinLength);
+                    lock (emgLock) emgDataList.RemoveRange(emgDataList.Count - StepLength, StepLength);
                     GestureResult = _emgClassifier.Predict(dataWin);
-                    ResultGenerated?.Invoke(null,GestureResult);
+                    GestureMavResult = _emgClassifier.GetMAV(dataWin);
+                    ResultGenerated?.Invoke(null,new[]{GestureResult,GestureMavResult/ClassMav[GestureResult]});
                     List<double> resultDoubles = new List<double>(){0,0,0,0,0,0,0};
+//                    List<double> resultMavDoubles = new List<double>(){0,0,0,0,0,0,0};
                     resultDoubles[GestureResult] = 1;
+//                    resultMavDoubles[GestureResult] = GestureMavResult;
                     ResultData.Add(resultDoubles);
                 }
                 catch (Exception)

@@ -35,7 +35,7 @@ public class TrainController : MonoBehaviour
 	    unetClientBase.DisconnectionEvent += UnetClientBase_DisconnectionEvent;
 	    unetClientBase.DataEvent += UnetClientBase_DataEvent;
 
-	    StartCoroutine(ConnectedToServer());
+//	    StartCoroutine(ConnectedToServer());
 	}
 
     private void UnetClientBase_DataEvent(object sender, UnetClientBase.UnetDataMsg e)
@@ -61,11 +61,8 @@ public class TrainController : MonoBehaviour
 	    _serverCommandNew = false;
 	    switch (_serverCommand)
 	    {
-            case 10:
-                IntroText.text = "The Training Process is Starting";
-                break;
 	        case 100:
-	            myHandController.Rest();
+	            myHandController.IResetHand();
 	            IntroText.text = myHandController.GestureIntro[MyHandController.GestureState.NoMovement];
                 break;
 	        case 101:
@@ -94,10 +91,9 @@ public class TrainController : MonoBehaviour
 	            break;
 	        case 1010:
 	            IntroText.text = "The Trainning Process is Over, Waitting for next process";
-	            myHandController.Rest();
+	            myHandController.IResetHand();
 	            break;
             default:
-                IntroText.text = $"Msg is: {_serverCommand}";
                 break;
         }
     }
@@ -106,17 +102,17 @@ public class TrainController : MonoBehaviour
     {
         yield return new WaitForSeconds(1);
         unetClientBase.ConnectToServer(Ip, Port);
-        var count = 0;
-        while (count <10)
-        {
-            yield return new WaitForSeconds(10);
-            if (!_connected)
-            {
-                unetClientBase.ConnectToServer(Ip, Port);
-                yield break;
-            }
-            count++;
-        }
+//        var count = 0;
+//        while (count <10)
+//        {
+//            yield return new WaitForSeconds(10);
+//            if (!_connected)
+//            {
+//                unetClientBase.ConnectToServer(Ip, Port);
+//                yield break;
+//            }
+//            count++;
+//        }
     }
 
     public void DisConnectedToServer()
@@ -124,8 +120,9 @@ public class TrainController : MonoBehaviour
         unetClientBase.DisconnectToServer();
     }
 
-    public void SendMessageToServer()
+    public void SendMessageToServer(string msg)
     {
-        unetClientBase.SendMessageToServer("");
+        unetClientBase.SendMessageToServer(msg);
     }
 }
+

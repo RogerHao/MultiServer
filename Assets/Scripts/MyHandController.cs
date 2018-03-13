@@ -1,13 +1,18 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 using HandPhysicsExtenstions;
+using UnityEngine.UI;
 
 [RequireComponent(typeof(HandPhysicsController))]
 public class MyHandController : MonoBehaviour
 {
+    public GameObject forearm;
+    public GameObject wrist;
+
     private FingerPart[] _fingers = new FingerPart[15];
     private List<Quaternion> defaultfingerTarget = new List<Quaternion>();
     private List<Quaternion> openfingerTarget = new List<Quaternion>()
@@ -91,6 +96,19 @@ public class MyHandController : MonoBehaviour
 
     private int _supnationCount = 0;
     private int _felxionCount = 0;
+    private int _closeCount = 0;
+    public event EventHandler<long> Success;
+    public bool IsTesting { get; private set; }
+    public bool IsNullTesting { get; private set; }
+    private Stopwatch sw = new Stopwatch();
+    private Stopwatch sw_dewlling = new Stopwatch();
+    public long OverTime = 45000;
+    public long DeellingTime = 2000;
+    public int TargetDistance = 75;
+
+    public Text supnationCount;
+    public Text felxionCount;
+    public Text closeCount;
 
     // Use this for initialization
     void Start ()
@@ -103,52 +121,29 @@ public class MyHandController : MonoBehaviour
     }
 
 	// Update is called once per frame
-//	void Update ()
-//	{
-//        if(Input.GetKeyDown(KeyCode.Alpha1)) OpenSequence();
-//        if(Input.GetKeyDown(KeyCode.Alpha2)) CloseSequence();
-//        if(Input.GetKeyDown(KeyCode.Alpha3)) IClose();
-//
-//        if (!ServerCommandNew) return;
-//	    ServerCommandNew = false;
-//	    switch (ServerCommand)
-//	    {
-//	        case 0:
-//	            Rest();
-//	            break;
-//	        case 1:
-//	        case 11:
-//	            IClose();
-//	            break;
-//	        case 2:
-//	        case 22:
-//	            IOpen();
-//	            break;
-//	        case 3:
-//	        case 33:
-//	            ISupination();
-//	            break;
-//	        case 4:
-//	        case 44:
-//	            IPronation();
-//	            break;
-//	        case 5:
-//	        case 55:
-//	            IFlexion();
-//	            break;
-//	        case 6:
-//	        case 66:
-//	            IExtension();
-//	            break;
-//            case 7:
-//                CloseSequence();
-//                break;
-//	        case 8:
-//	            OpenSequence();
-//	            break;
-//
-//        }
-//    }
+	void Update ()
+	{
+        if(!IsTesting) return;
+        if(sw.ElapsedMilliseconds>=OverTime) StopOneTesting(false);
+	    if (Mathf.Abs(_closeCount) > 5 || Mathf.Abs(_felxionCount) > 5 || Mathf.Abs(_supnationCount) > 5)
+	    {
+            if(!sw_dewlling.IsRunning) return;
+            sw_dewlling.Stop();
+            sw_dewlling.Reset();
+	    }
+	    else
+	    {
+            if(!sw_dewlling.IsRunning) sw_dewlling.Start();
+            if(sw_dewlling.ElapsedMilliseconds>=DeellingTime) StopOneTesting(true);
+	    }
+	}
+
+    void OnGUI()
+    {
+        supnationCount.text = _supnationCount.ToString();
+        felxionCount.text = _felxionCount.ToString();
+        closeCount.text = _closeCount.ToString();
+    }
 
     /// <summary>
     /// Seven Gesture Public Method
@@ -156,79 +151,75 @@ public class MyHandController : MonoBehaviour
     /// <param name="pos"></param>
     /// <returns></returns>
     /// 
-    public void ISupination(bool pos = true)
+    public void ISupination(bool train = true)
     {
-        StartCoroutine(Supination(pos));
+        StartCoroutine(Supination(train));
     }
-    private IEnumerator Supination(bool pos=true)
+    private IEnumerator Supination(bool train = true)
     {
-        if(pos && TrainGestureState != GestureState.NoMovement) yield break;
-        if(pos && TrainGestureState == GestureState.Supination) yield break;
-        for (int i = 0; i < 20; i++)
+        if(TrainGestureState != GestureState.NoMovement) yield break;
+        if(TrainGestureState == GestureState.Supination) yield break;
+        for (var i = 0; i < (train?90:TargetDistance); i++)
         {
-            Controller.RotateForearm(pos ? -0.45f:0.45f);
-            yield return new WaitForSeconds(0.05f);
+            yield return new WaitForSeconds(0.01f);
+            SupinationAndPronation(true);
         }
-        _supnationCount = _supnationCount + Convert.ToInt32(20 * 0.45f / 0.083f);
-        TrainGestureState = pos ? GestureState.Supination : GestureState.NoMovement;
+        TrainGestureState = GestureState.Supination;
     }
 
-    public void IPronation(bool pos = true)
+    public void IPronation(bool train = true)
     {
-        StartCoroutine(Pronation(pos));
+        StartCoroutine(Pronation(train));
     }
-    private IEnumerator Pronation(bool pos = true)
+    private IEnumerator Pronation(bool train)
     {
-        if (pos && TrainGestureState != GestureState.NoMovement) yield break;
-        if (pos && TrainGestureState == GestureState.Pronation) yield break;
-        for (int i = 0; i < 15; i++)
+        if (TrainGestureState != GestureState.NoMovement) yield break;
+        if (TrainGestureState == GestureState.Pronation) yield break;
+        for (var i = 0; i < (train ? 150 : TargetDistance); i++)
         {
-            Controller.RotateForearm(pos?1f:-1f);
-            yield return new WaitForSeconds(0.05f);
+            yield return new WaitForSeconds(0.01f);
+            SupinationAndPronation(false);
         }
-        _supnationCount = _supnationCount - Convert.ToInt32(15 * 1f / 0.083f);
-        TrainGestureState = pos ? GestureState.Pronation : GestureState.NoMovement;
+        TrainGestureState = GestureState.Pronation;
     }
 
-    public void IFlexion(bool pos = true)
+    public void IFlexion(bool train = true)
     {
-        StartCoroutine(Flexion(pos));
+        StartCoroutine(Flexion(train));
     }
-    private IEnumerator Flexion(bool pos=true)
+    private IEnumerator Flexion(bool train)
     {
-        if (pos && TrainGestureState != GestureState.NoMovement) yield break;
-        if (pos && TrainGestureState == GestureState.Flexion) yield break;
-        for (int i = 0; i < 10; i++)
+        if (TrainGestureState != GestureState.NoMovement) yield break;
+        if (TrainGestureState == GestureState.Flexion) yield break;
+        for (var i = 0; i < TargetDistance; i++)
         {
-            Controller.RotateWrist(pos ? -1f : 1f);
-            yield return new WaitForSeconds(0.1f);
+            yield return new WaitForSeconds(0.01f);
+            FlexionAndExtension(true);
         }
-        _felxionCount = _felxionCount + Convert.ToInt32(10 * 1f / 0.1111f);
-        TrainGestureState = pos ? GestureState.Flexion : GestureState.NoMovement;
+        TrainGestureState = GestureState.Flexion;
     }
 
     public void IExtension(bool pos = true)
     {
         StartCoroutine(Extension(pos));
     }
-    private IEnumerator Extension(bool pos = true)
+    private IEnumerator Extension(bool pos)
     {
-        if (pos && TrainGestureState == GestureState.Extension) yield break;
-        if (pos && TrainGestureState != GestureState.NoMovement) yield break;
-        for (int i = 0; i < 10; i++)
+        if (TrainGestureState != GestureState.NoMovement) yield break;
+        if (TrainGestureState == GestureState.Extension) yield break;
+        for (var i = 0; i < TargetDistance; i++)
         {
-            Controller.RotateWrist(pos ? 1f : -1f);
-            yield return new WaitForSeconds(0.1f);
+            yield return new WaitForSeconds(0.01f);
+            FlexionAndExtension(false);
         }
-        _felxionCount = _felxionCount - Convert.ToInt32(10 * 1f / 0.1111f);
-        TrainGestureState = pos ? GestureState.Extension : GestureState.NoMovement;
+        TrainGestureState = GestureState.Extension;
     }
 
     public void IOpen(bool pos = true)
     {
-        StartCoroutine(Open(pos));
+        StartCoroutine(pos ? Open(pos) : Open());
     }
-    private IEnumerator Open(bool pos = true)
+    private IEnumerator Open(bool pos)
     {
         if (pos && TrainGestureState == GestureState.Open) yield break;
         if (pos && TrainGestureState != GestureState.NoMovement) yield break;
@@ -243,9 +234,9 @@ public class MyHandController : MonoBehaviour
 
     public void IClose(bool pos = true)
     {
-        StartCoroutine(Close(pos));
+        StartCoroutine(pos ? Close(pos) : Close());
     }
-    private IEnumerator Close(bool pos = true)
+    private IEnumerator Close(bool pos)
     {
         if (pos && TrainGestureState == GestureState.Close) yield break;
         if (pos && TrainGestureState != GestureState.NoMovement) yield break;
@@ -286,29 +277,36 @@ public class MyHandController : MonoBehaviour
                 break;
         }
     }
-
     public void IResetHand()
     {
         StartCoroutine(ResetHand());
     }
     public IEnumerator ResetHand()
     {
-        Controller.StopBendFingers();
+        
+        for (var i = 0; i < Mathf.Abs(_felxionCount); i++)
+        {
+            yield return new WaitForSeconds(0.01f);
+            Controller.RotateWrist(_felxionCount >= 0 ? 0.1f : -0.1f);
+        }
+        for (var i = 0; i < Mathf.Abs(_supnationCount); i++)
+        {
+            yield return new WaitForSeconds(0.01f);
+            Controller.RotateForearm(_supnationCount >= 0 ? 0.1f : -0.1f);
+        }
+        for (var i = 0; i < Mathf.Abs(_closeCount); i++)
+        {
+            yield return new WaitForSeconds(0.01f);
+            if(_closeCount>=0) Controller.StopBendFingersAmount();
+            else Controller.StartBendFingersAmount();
+        }
         Controller.StartBendFingers();
         Controller.StopBendFingers();
-
-        for (int i = 0; i < Mathf.Abs(_felxionCount); i++)
-        {
-            yield return new WaitForSeconds(0.1f);
-            Controller.RotateWrist(_felxionCount >= 0 ? 0.1111f : -0.1111f);
-        }
-        for (int i = 0; i < Mathf.Abs(_supnationCount); i++)
-        {
-            yield return new WaitForSeconds(0.1f);
-            Controller.RotateForearm(_supnationCount >= 0 ? 0.083f : -0.083f);
-        }
+        TrainGestureState = GestureState.NoMovement;
+        TestGestureState = GestureState.NoMovement;
         _supnationCount = 0;
         _felxionCount = 0;
+        _closeCount = 0;
     }
 
     public void SetForearmSpeed(float speed)
@@ -326,28 +324,113 @@ public class MyHandController : MonoBehaviour
         Controller.Fingers.BendSpeed = speed;
     }
 
-    public void SupinationAndPronation(bool sup)
+    public void SupinationAndPronation(bool sup, double speed = 1f)
     {
-        if (sup) _supnationCount++;
-        else _supnationCount--;
-        Controller.RotateForearm(sup?-0.083f:0.083f);
+        //        if (!IsTesting && !IsNullTesting) return;
+        var speedInt = Convert.ToInt32(speed);
+        if (sup) _supnationCount += speedInt;
+        else _supnationCount-= speedInt;
+        Controller.RotateForearm(sup?-0.1f*speedInt:0.1f* speedInt);
     }
 
-    public void FlexionAndExtension(bool fle)
+    public void FlexionAndExtension(bool fle, double speed = 1f)
     {
-        if (fle) _felxionCount++;
-        else _felxionCount--;
-        Controller.RotateWrist(fle ? -0.1111f : 0.1111f);
+        //        if (!IsTesting && !IsNullTesting) return;
+        var speedInt = Convert.ToInt32(speed);
+        if (fle) _felxionCount+= speedInt;
+        else _felxionCount-= speedInt;
+        Controller.RotateWrist(fle ? -0.1f * speedInt : 0.1f * speedInt);
     }
 
-    public void CloseSequence()
+    public void CloseSequence(double speed=1f)
     {
-        Controller.StartBendFingersAmount();
+//        if (!IsTesting && !IsNullTesting) return;
+        var speedInt = Convert.ToInt32(speed);
+        StartCoroutine(CloseSequenceAmount(speedInt));
     }
 
-    public void OpenSequence()
+    private IEnumerator CloseSequenceAmount(int speed)
     {
-        Controller.StopBendFingersAmount();
+        for (var i = 0; i < speed; i++)
+        {
+            Controller.StartBendFingersAmount();
+            yield return new WaitForSeconds(0.01f);
+        }
+        _closeCount += speed;
     }
 
+    private IEnumerator Close()
+    {
+        for (var i = 0; i < 75; i++)
+        {
+            Controller.StartBendFingersAmount();
+            yield return new WaitForSeconds(0.01f);
+        }
+        _closeCount += 75;
+    }
+
+    public void OpenSequence(double speed = 1f)
+    {
+        var speedInt = Convert.ToInt32(speed);
+        StartCoroutine(OpenSequenceAmount(speedInt));
+    }
+
+    private IEnumerator OpenSequenceAmount(int speed)
+    {
+        for (var i = 0; i < speed; i++)
+        {
+            Controller.StopBendFingersAmount();
+            yield return new WaitForSeconds(0.01f);
+        }
+        _closeCount -= speed;
+    }
+
+    private IEnumerator Open()
+    {
+        for (var i = 0; i < 75; i++)
+        {
+            Controller.StopBendFingersAmount();
+            yield return new WaitForSeconds(0.01f);
+        }
+        _closeCount -= 75;
+    }
+
+    public void StartOneTesting()
+    {
+        sw.Reset();
+        IsTesting = true;
+        sw.Start();
+    }
+
+    private void StopOneTesting(bool success)
+    {
+        sw.Stop();
+        IsTesting = false;
+        IResetHand();
+        Success?.Invoke(null,sw.ElapsedMilliseconds);
+    }
+
+    public void StartNullTesting()
+    {
+        IsNullTesting = true;
+    }
+    public void StopNullTesting()
+    {
+        IsNullTesting = false;
+        IResetHand();
+    }
+
+    public void ManualReset()
+    {
+        Controller.StartBendFingers();
+        for (int i = 0; i < Math.Abs(forearm.transform.rotation.eulerAngles.z); i++)
+        {
+            SupinationAndPronation(forearm.transform.rotation.eulerAngles.z<0);
+        }
+        for (int i = 0; i < Math.Abs(wrist.transform.rotation.eulerAngles.x); i++)
+        {
+            FlexionAndExtension(wrist.transform.rotation.eulerAngles.x < 0);
+        }
+        Controller.StopBendFingers();
+    }
 }

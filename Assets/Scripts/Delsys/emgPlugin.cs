@@ -30,7 +30,7 @@ namespace DelsysPlugin
             GestureNumber = gestureNumber;
         }
 
-        public double RestState(List<List<double>> dataWindow)
+        public double GetMAV(List<List<double>> dataWindow)
         {
             var emgEnergy = new double[ChannelNum];
             double energy = 0;
