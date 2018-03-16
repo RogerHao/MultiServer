@@ -82,6 +82,8 @@ public class UnetServerBase : MonoBehaviour
         ConnectionEvent -= OnConnectionEvent;
         DisconnectionEvent -= OnDisconnectionEvent;
 
+        Clients.Clear();
+
         UnetServerStarted = false;
         NetworkTransport.Shutdown();
     }

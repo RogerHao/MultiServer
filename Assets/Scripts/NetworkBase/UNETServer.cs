@@ -60,25 +60,43 @@ public class UNETServer : MonoBehaviour {
         LogText.text = LogString;
         RevText.text = RevString;
 
-        foreach (var itemClient in UnetServerBase.Clients)
+        for (var index = 0; index < UnetServerBase.Clients.Count; index++)
         {
-            if (UnetClients.Contains(itemClient)) continue;
-            UnetClients.Add(itemClient);
-            ClientInstance newClientInstance = Instantiate(client, Clients.transform);
-            newClientInstance.ClientInfo = itemClient.ClientInfo;
-            newClientInstance.HostId = itemClient.HostId;
-            newClientInstance.ConnectionId = itemClient.ConnectionId;
-            _clientObjects = Clients.GetComponentsInChildren<ClientInstance>();
-        }
-        foreach (var itemClient in UnetClients)
-        {
-            if (UnetServerBase.Clients.Contains(itemClient)) return;
-            for (int i = 0; i < _clientObjects.Length; i++)
+            var itemClient = UnetServerBase.Clients[index];
+            try
             {
-                if (UnetClients[i].ClientInfo != itemClient.ClientInfo) continue;
-                if (_clientObjects[i].gameObject != null) Destroy(_clientObjects[i].gameObject);
+                if (UnetClients.Contains(itemClient)) continue;
+                UnetClients.Add(itemClient);
+                ClientInstance newClientInstance = Instantiate(client, Clients.transform);
+                newClientInstance.ClientInfo = itemClient.ClientInfo;
+                newClientInstance.HostId = itemClient.HostId;
+                newClientInstance.ConnectionId = itemClient.ConnectionId;
+                _clientObjects = Clients.GetComponentsInChildren<ClientInstance>();
             }
-            UnetClients.Remove(itemClient);
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+        }
+
+        for (var index = 0; index < UnetClients.Count; index++)
+        {
+            var itemClient = UnetClients[index];
+            try
+            {
+                if (UnetServerBase.Clients.Contains(itemClient)) return;
+                for (int i = 0; i < _clientObjects.Length; i++)
+                {
+                    if (UnetClients[i].ClientInfo != itemClient.ClientInfo) continue;
+                    if (_clientObjects[i].gameObject != null) Destroy(_clientObjects[i].gameObject);
+                }
+
+                UnetClients.Remove(itemClient);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
         }
     }
 

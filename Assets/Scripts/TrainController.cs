@@ -1,19 +1,22 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Net;
+using System.Net.Sockets;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 
-[RequireComponent(typeof(HandPhysicsController))]
-[RequireComponent(typeof(MyHandController))]
 [RequireComponent(typeof(UnetClientBase))]
 public class TrainController : MonoBehaviour
 {
-    public string Ip;
+    private string Ip;
     public int Port;
 
     // Use this for initialization
+    public GameObject HandContainner;
+    public GameObject HandPrefab;
     private MyHandController myHandController;
     private UnetClientBase unetClientBase;
 
@@ -28,14 +31,13 @@ public class TrainController : MonoBehaviour
 
 	void Start ()
 	{
-	    myHandController = gameObject.GetComponent<MyHandController>();
+	    Ip = GetIp();
+	    myHandController = HandContainner.GetComponentInChildren<MyHandController>();
 	    unetClientBase = gameObject.GetComponent<UnetClientBase>();
 
 	    unetClientBase.ConnectionEvent += UnetClientBase_ConnectionEvent;
 	    unetClientBase.DisconnectionEvent += UnetClientBase_DisconnectionEvent;
 	    unetClientBase.DataEvent += UnetClientBase_DataEvent;
-
-//	    StartCoroutine(ConnectedToServer());
 	}
 
     private void UnetClientBase_DataEvent(object sender, UnetClientBase.UnetDataMsg e)
@@ -93,26 +95,17 @@ public class TrainController : MonoBehaviour
 	            IntroText.text = "The Trainning Process is Over, Waitting for next process";
 	            myHandController.IResetHand();
 	            break;
+	        case 1011:
+	            StartTestScene();
+	            break;
             default:
                 break;
         }
     }
 
-    public IEnumerator ConnectedToServer()
+    public void ConnectedToServer()
     {
-        yield return new WaitForSeconds(1);
         unetClientBase.ConnectToServer(Ip, Port);
-//        var count = 0;
-//        while (count <10)
-//        {
-//            yield return new WaitForSeconds(10);
-//            if (!_connected)
-//            {
-//                unetClientBase.ConnectToServer(Ip, Port);
-//                yield break;
-//            }
-//            count++;
-//        }
     }
 
     public void DisConnectedToServer()
@@ -123,6 +116,26 @@ public class TrainController : MonoBehaviour
     public void SendMessageToServer(string msg)
     {
         unetClientBase.SendMessageToServer(msg);
+    }
+
+    public void StartTestScene()
+    {
+        DisConnectedToServer();
+        SceneManager.LoadScene("UNETClienTest");
+    }
+
+    private string GetIp()
+    {
+        string name = Dns.GetHostName();
+        IPAddress[] ipadrlist = Dns.GetHostAddresses(name);
+        foreach (IPAddress ipa in ipadrlist)
+        {
+            if (ipa.AddressFamily == AddressFamily.InterNetwork)
+            {
+                return ipa.ToString();
+            }
+        }
+        return "";
     }
 }
 

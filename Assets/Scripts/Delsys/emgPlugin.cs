@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using MathNet.Numerics.LinearAlgebra;
 using MathNet.Numerics.LinearAlgebra.Double;
 
@@ -14,12 +15,12 @@ namespace DelsysPlugin
         public int ChannelNum { get; private set; }
         public int GestureNumber { get; private set; }
 
-        public List<List<double>> ModelMean { get; } = new List<List<double>>();
-        public List<List<double>> ModelCov { get; } = new List<List<double>>();
+        public List<List<double>> ModelMean { get; set; } = new List<List<double>>();
+        public List<List<double>> ModelCov { get; set; } = new List<List<double>>();
 
         private readonly List<List<double>> _mFeatureMatrix = new List<List<double>>();
         private readonly List<int> _mLabelVector = new List<int>();
-        private readonly List<int> _mClassLabel = new List<int>();
+        private List<int> _mClassLabel = new List<int>();
 
         public Classifier(int feaWinWidth, int stepLength,int channelNum, int gestureNumber)
         {
@@ -110,6 +111,7 @@ namespace DelsysPlugin
             var labNum = label.Count;
             if (labNum != featNum) return false;
 
+            _mClassLabel.Clear();
             for (var i = 0; i < GestureNumber; i++) _mClassLabel.Add(i);
 
             Matrix<double> featMat = new DenseMatrix(featNum, featDim);
@@ -176,6 +178,107 @@ namespace DelsysPlugin
         {
             var fea = FeatureExtractToVec(dataWindow);
             return BayesPredict(ModelCov, ModelMean, fea);
+        }
+
+        public void SaveModelToFile()
+        {
+            var filePath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            if (!File.Exists($"{filePath}//ModelMean.csv"))
+            {
+                FileStream fs = new FileStream($"{filePath}//ModelMean.csv", FileMode.Create, FileAccess.Write);
+                fs.Close();
+                fs.Dispose();
+            }
+            if (!File.Exists($"{filePath}//ModelCov.csv"))
+            {
+                FileStream fs = new FileStream($"{filePath}//ModelCov.csv", FileMode.Create, FileAccess.Write);
+                fs.Close();
+                fs.Dispose();
+            }
+
+            var sw_ModelMean = new StreamWriter($"{filePath}//ModelMean.csv", false);
+            foreach (var row in ModelMean)
+            {
+                foreach (var data in row)
+                {
+                    if (!Convert.IsDBNull(data))
+                    {
+                        sw_ModelMean.Write(data.ToString());
+                        sw_ModelMean.Write(",");
+                    }
+                }
+                sw_ModelMean.Write(sw_ModelMean.NewLine);
+            }
+            sw_ModelMean.Close();
+            sw_ModelMean.Dispose();
+
+            var sw_ModelCov = new StreamWriter($"{filePath}//ModelCov.csv", false);
+            foreach (var row in ModelCov)
+            {
+                foreach (var data in row)
+                {
+                    if (!Convert.IsDBNull(data))
+                    {
+                        sw_ModelCov.Write(data.ToString());
+                        sw_ModelCov.Write(",");
+                    }
+                }
+                sw_ModelCov.Write(sw_ModelCov.NewLine);
+            }
+            sw_ModelCov.Close();
+            sw_ModelCov.Dispose();
+        }
+
+        public bool LoadModelFromFile()
+        {
+            var filePath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            if (!File.Exists($"{filePath}//ModelMean.csv")) return false;
+            if (!File.Exists($"{filePath}//ModelCov.csv")) return false;
+            ModelMean.Clear();
+            ModelCov.Clear();
+
+            StreamReader fileReader_mean = new StreamReader($"{filePath}//ModelMean.csv");
+            string strLine = "";
+            while (strLine != null)
+            {
+                strLine = fileReader_mean.ReadLine();
+                if (!string.IsNullOrEmpty(strLine))
+                {
+                    List<double> tempDoubles = new List<double>();
+                    var temp = strLine.Split(',');
+                    foreach (var str in temp)
+                    {
+                        double tempdouble = 0f;
+                        double.TryParse(str, out tempdouble);
+                        if(Math.Abs(tempdouble)>0) tempDoubles.Add(tempdouble);
+                    }
+                    ModelMean.Add(tempDoubles);
+                }
+            }
+            fileReader_mean.Close();
+
+            StreamReader fileReader_cov = new StreamReader($"{filePath}//ModelCov.csv");
+            string strLine_cov = "";
+            while (strLine_cov != null)
+            {
+                strLine_cov = fileReader_cov.ReadLine();
+                if (!string.IsNullOrEmpty(strLine_cov))
+                {
+                    List<double> tempDoubles = new List<double>();
+                    var temp = strLine_cov.Split(',');
+                    foreach (var str in temp)
+                    {
+                        double tempdouble = 0f;
+                        double.TryParse(str, out tempdouble);
+                        if (Math.Abs(tempdouble) > 0) tempDoubles.Add(tempdouble);
+                    }
+                    ModelCov.Add(tempDoubles);
+                }
+            }
+            fileReader_cov.Close();
+
+            for (var i = 0; i < ModelMean.Count; i++) _mClassLabel.Add(i);
+            return true;
         }
 
         private int BayesPredict(List<List<double>> poolCovMat, List<List<double>> meanMat, List<double> x)

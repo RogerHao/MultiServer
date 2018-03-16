@@ -8,7 +8,6 @@ using System.IO;
 using System.Threading;
 using System.Net.Sockets;
 
-
 namespace DelsysPlugin
 {
     public class DelsysEmgSolver
@@ -28,12 +27,34 @@ namespace DelsysPlugin
         public bool IsPredicting { get; private set; }
         public int GestureResult { get; private set; }
         public double GestureMavResult { get; private set; }
+        public double ThresholdMavFactor { get; set; } = 1;
         public event EventHandler<double[]> ResultGenerated;
+        public event EventHandler<int> IntResultGenerated;
 
         public static List<List<double>> EmgData = new List<List<double>>();
         public static List<List<double>> ResultData = new List<List<double>>();
-        public static List<List<double>> ClassMavData = new List<List<double>>();
+        public static List<List<double>> ClassMavData = new List<List<double>>(){};
+        public static List<List<double>> ClassifierData = new List<List<double>>();
         public static List<double> ClassMav = new List<double>();
+
+        public enum FileType
+        {
+            Emgdata,
+            ResultData,
+            ClassifierData,
+            MavData
+        }
+
+        public string ClassMavStr
+        {
+            get
+            {
+                var mavstr = "";
+                foreach (var mav in ClassMav) mavstr += mav + ",";
+                return mavstr;
+            }
+        }
+
         public int DataNowCount => emgDataList.Count;
         public int DataTotal => EmgData.Count;
 
@@ -87,13 +108,22 @@ namespace DelsysPlugin
         private const string COMMAND_SENSOR_TYPE = "TYPE?";
 
         private List<List<double>> emgDataList = new List<List<double>>();
+        private Dictionary<FileType,List<List<double>>> FileDic = new Dictionary<FileType, List<List<double>>>()
+        {
+            {FileType.Emgdata,EmgData},
+            {FileType.ResultData,ResultData},
+            {FileType.ClassifierData,ClassifierData},
+            {FileType.MavData,ClassMavData }
+        };
+
+
         private List<List<double>> accXDataList = new List<List<double>>();
         private List<List<double>> accYDataList = new List<List<double>>();
         private List<List<double>> accZDataList = new List<List<double>>();
 #endregion
 
 
-        public void InitClassifier(int getsture,int channel,int gestureSample,int gestureWhole, int gestureCut,int winLength=600,int stepLength = 200)
+        public void InitClassifier(int getsture,int channel,int gestureSample,int gestureWhole, int gestureCut,int winLength=600,int stepLength = 200,bool loadFile=false)
         {
             ChannelNum = channel;
             GestureNum = getsture;
@@ -103,10 +133,25 @@ namespace DelsysPlugin
             WinLength = winLength;
             StepLength = stepLength;
             _emgClassifier = new Classifier(WinLength, StepLength, ChannelNum, GestureNum);
-            EmgData.Clear();
-            ClassMav.Clear();
             emgCancellationTokenSource.Cancel();
             predictCancellationTokenSource.Cancel();
+            EmgData.Clear();
+
+            ClassMav.Clear();
+            ClassMavData.Clear();
+            if (loadFile)
+            {
+                var loadModel = _emgClassifier.LoadModelFromFile() && LoadMavDataFromFile();
+                ModelGenerated = loadModel;
+            }
+        }
+
+        public void ClearModelFromFile()
+        {
+            _emgClassifier.ModelMean.Clear();
+            _emgClassifier.ModelCov.Clear();
+            ClassMavData.Clear();
+            ClassMav.Clear();
         }
 
         public async void GetRestState()
@@ -124,6 +169,9 @@ namespace DelsysPlugin
                 label[j] = i;
             _emgClassifier.AddFeatureLabelFromData(EmgData, label);
             ModelGenerated  = await Task.Run(()=>_emgClassifier.GenerateModel());
+            _emgClassifier.SaveModelToFile();
+            ClassMavData.Add(ClassMav);
+            SaveDataToCsv("","MavData",FileType.MavData);
         }
 
         public int TestModel(int startIndex)
@@ -173,7 +221,7 @@ namespace DelsysPlugin
         public string Disconnect()
         {
             if (EmgGetting) return "isRunning";
-            SendCommand(COMMAND_QUIT);
+            if (!Connected) return "NotConnected";
             Connected = false;
             commandReader.Close();
             commandWriter.Close();
@@ -182,6 +230,7 @@ namespace DelsysPlugin
             emgSocket?.Close();
             accStream?.Close();
             accSocket?.Close();
+            SendCommand(COMMAND_QUIT);
             return "OK";
         }
 
@@ -284,8 +333,9 @@ namespace DelsysPlugin
             if (!ModelGenerated) return -1;
             if (!predictCancellationTokenSource.IsCancellationRequested) return -2;
             predictCancellationTokenSource = new CancellationTokenSource();
-            StartGetEmgDateAsync();
             Task.Run(() => Predictter(), predictCancellationTokenSource.Token);
+            StartGetEmgDateAsync();
+            emgDataList.Clear();
             IsPredicting = true;
             return 0;
         }
@@ -301,8 +351,6 @@ namespace DelsysPlugin
         {
             if (!Connected) return;
             if (!emgCancellationTokenSource.IsCancellationRequested) return;
-
-            emgDataList.Clear();
             emgSocket = new TcpClient(_serverUrl, emgPort);
             emgStream = emgSocket.GetStream();
 
@@ -350,10 +398,10 @@ namespace DelsysPlugin
             return "OK";
         }
 
-        public void SaveDataToCsv(string filePath, string commment,bool emg)
+        public void SaveDataToCsv(string filePath, string commment, FileType filetype)
         {
             var _trainData = new List<List<double>>();
-            _trainData = emg ? EmgData : ResultData;
+            _trainData = FileDic[filetype];
             if (string.IsNullOrEmpty(filePath)) filePath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
             if (!File.Exists($"{filePath}//{commment}.csv"))
             {
@@ -362,7 +410,6 @@ namespace DelsysPlugin
                 fs.Dispose();
             }
             var sw = new StreamWriter($"{filePath}//{commment}.csv", false);
-            var iColCount = _trainData.Count;
             foreach (var row in _trainData)
             {
                 foreach (var data in row)
@@ -375,10 +422,52 @@ namespace DelsysPlugin
                 }
                 sw.Write(sw.NewLine);
             }
-            if(emg) EmgData?.Clear();
-            else ResultData?.Clear();
+
+            FileDic[filetype].Clear();
             sw.Close();
             sw.Dispose();
+        }
+        private bool LoadMavDataFromFile()
+        {
+            var filePath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            if (!File.Exists($"{filePath}//MavData.csv")) return false;
+            StreamReader fileReader_mean = new StreamReader($"{filePath}//MavData.csv");
+            string strLine = "";
+            while (strLine != null)
+            {
+                strLine = fileReader_mean.ReadLine();
+                if (!string.IsNullOrEmpty(strLine))
+                {
+                    var temp = strLine.Split(',');
+                    foreach (var str in temp)
+                    {
+                        double tempdouble = 0f;
+                        double.TryParse(str, out tempdouble);
+                        if (Math.Abs(tempdouble) > 0) ClassMav.Add(tempdouble);
+                    }
+                }
+            }
+            ClassMavData.Add(ClassMav);
+            fileReader_mean.Close();
+            return ClassMav.Count == 7;
+        }
+        public double CalculateAccuracy()
+        {
+            if(ResultData.Count==0) return 0f;
+            var resultDoubles = new List<double>() { 0, 0, 0, 0, 0, 0, 0 };
+            foreach (var t in ResultData)
+            {
+                for (var j = 0; j < ResultData[0].Count; j++)
+                {
+                    resultDoubles[j] += t[j];
+                }
+            }
+            for (var i = 0; i < ResultData[0].Count; i++)
+            {
+                resultDoubles[i] = resultDoubles[i] / ResultData.Count;
+            }
+            ClassifierData.Add(resultDoubles);
+            return resultDoubles[ClassifierData.Count-1];
         }
 
         private void AccWorker()
@@ -538,21 +627,27 @@ namespace DelsysPlugin
                 try
                 {
                     if (emgDataList.Count < WinLength) continue;
-                    List<List<double>> dataWin = new List<List<double>>();
-                    dataWin = emgDataList.GetRange(emgDataList.Count - WinLength, WinLength);
-                    lock (emgLock) emgDataList.RemoveRange(emgDataList.Count - StepLength, StepLength);
-                    GestureResult = _emgClassifier.Predict(dataWin);
-                    GestureMavResult = _emgClassifier.GetMAV(dataWin);
-                    ResultGenerated?.Invoke(null,new[]{GestureResult,GestureMavResult/ClassMav[GestureResult]});
-                    List<double> resultDoubles = new List<double>(){0,0,0,0,0,0,0};
-//                    List<double> resultMavDoubles = new List<double>(){0,0,0,0,0,0,0};
+                    try
+                    {
+                        GestureMavResult = _emgClassifier.GetMAV(emgDataList.GetRange(emgDataList.Count - WinLength, WinLength));
+                        GestureResult = GestureMavResult < ClassMav[0]* ThresholdMavFactor ? 0 : _emgClassifier.Predict(emgDataList.GetRange(emgDataList.Count - WinLength, WinLength));
+                        ResultGenerated?.Invoke(null, new[] { GestureResult, GestureMavResult / ClassMav[GestureResult] });
+                    }
+                    catch (Exception)
+                    {
+                        //
+                    }
+                    //IntResultGenerated?.Invoke(null,GestureResult);
+                    // List<double> resultMavDoubles = new List<double>(){0,0,0,0,0,0,0};
+                    var resultDoubles = new List<double>() { 0, 0, 0, 0, 0, 0, 0 };
                     resultDoubles[GestureResult] = 1;
-//                    resultMavDoubles[GestureResult] = GestureMavResult;
+                    //resultMavDoubles[GestureResult] = GestureMavResult;
                     ResultData.Add(resultDoubles);
+                    lock (emgLock) emgDataList.RemoveRange(0, StepLength);
                 }
                 catch (Exception)
                 {
-                    //                    Console.WriteLine(e);
+                    //Console.WriteLine(e);
                 }
             }
         }

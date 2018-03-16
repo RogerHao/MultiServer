@@ -3,15 +3,23 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
+using System.Net.Sockets;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using Debug = UnityEngine.Debug;
 
-[RequireComponent(typeof(HandPhysicsController))]
-[RequireComponent(typeof(MyHandController))]
 [RequireComponent(typeof(UnetClientBase))]
 public class TestController : MonoBehaviour {
-    public string Ip;
+    private string Ip;
     public int Port;
+    public GameObject HandContainner;
+    public GameObject HandPrefab;
+    public GameObject TargetHandContainner;
+    public GameObject TargetHand01;
+    public GameObject TargetHand02;
+
 
     // Use this for initialization
     private MyHandController myHandController;
@@ -19,7 +27,8 @@ public class TestController : MonoBehaviour {
 
     private bool _connected = false;
     private int _serverCommand = 0;
-    private double _serverMavCommand = 0f;
+    private double _serverMavCommand = 1f;
+    private int _commCommand = 0;
     private bool _serverCommandNew = false;
     private bool _serverMavCommandNew = false;
 
@@ -28,7 +37,12 @@ public class TestController : MonoBehaviour {
     private bool _commpleteOneComm = false;
     private string _commpleteOneCommText = "";
     private List<long> completeTimeList = new List<long>();
-    private const  string CommIntro = "Please try to move the hand to the opposite state";
+    private const  string CommIntro = "Please try to move the hand to the target state";
+
+    public Text supnationCount;
+    public Text felxionCount;
+    public Text closeCount;
+    public GameObject Degree;
 
     /// <summary>
     /// UI
@@ -37,15 +51,17 @@ public class TestController : MonoBehaviour {
 
     void Start()
     {
-        myHandController = gameObject.GetComponent<MyHandController>();
+        Ip = GetIp();
+        myHandController = HandContainner.GetComponentInChildren<MyHandController>();
+        UnityEngine.Debug.Log(myHandController);
         unetClientBase = gameObject.GetComponent<UnetClientBase>();
 
         unetClientBase.ConnectionEvent += UnetClientBase_ConnectionEvent;
         unetClientBase.DisconnectionEvent += UnetClientBase_DisconnectionEvent;
         unetClientBase.DataEvent += UnetClientBase_DataEvent;
-        myHandController.Success += MyHandController_Success;
 
-        StartCoroutine(ConnectedToServer());
+        myHandController.Success += MyHandController_Success;
+        ConnectedToServer();
     }
 
     private void MyHandController_Success(object sender, long l)
@@ -60,7 +76,18 @@ public class TestController : MonoBehaviour {
     {
         var command = e.Msg.Split(',');
         int.TryParse(command[0], out _serverCommand);
-        if(command.Length>1) double.TryParse(command[1], out _serverMavCommand);
+        if (command.Length > 1)
+        {
+            var comm =  int.TryParse(command[1], out _commCommand);
+            Debug.Log(comm);
+            if (!comm)
+            {
+                double.TryParse(command[1], out _serverMavCommand);
+                _serverMavCommand = Convert.ToInt32(Mathf.Clamp((float)_serverMavCommand, 1, 5));
+//                _serverMavCommand = Convert.ToInt32(Mathf.Clamp((float)_serverMavCommand, 1, 5)*10);
+            }
+
+        }
         _serverCommandNew = true;
     }
 
@@ -77,6 +104,11 @@ public class TestController : MonoBehaviour {
     // Update is called once per frame
     void Update()
     {
+        if(Input.GetKeyDown(KeyCode.A)) myHandController.IOpen(false);
+        if(Input.GetKeyDown(KeyCode.Q)) myHandController.IResetHand();
+        if (Input.GetKeyDown(KeyCode.D)) myHandController.IClose(false);
+        if (Input.GetKeyDown(KeyCode.F)) myHandController.CloseSequence();
+
         if (_commpleteOneComm)
         {
             SendMessageToServer($"{completeTimeList.Last()}");
@@ -86,7 +118,8 @@ public class TestController : MonoBehaviour {
 
         if (!_connected) return;
         if (!_serverCommandNew) return;
-        UnityEngine.Debug.Log(_serverCommand);
+        UnityEngine.Debug.Log($"Gesture: {_serverCommand}");
+        UnityEngine.Debug.Log($"Gesture MAV: {_serverMavCommand}");
         _serverCommandNew = false;
 
         switch (_serverCommand)
@@ -144,23 +177,28 @@ public class TestController : MonoBehaviour {
                 _comCount++;
                 if (!_isPreparing) StartCoroutine(GestureCom(_comCount));
                 break;
+            case 205:
+                StartCoroutine(GestureCom(_commCommand));             
+                break;
+            case 206:
+                myHandController.SetTolerance(_commCommand);
+                break;
             case 210:
                 myHandController.ManualReset();
                 break;
         }
     }
 
-    public IEnumerator ConnectedToServer()
+    void OnGUI()
     {
-        yield return new WaitForSeconds(2);
+        supnationCount.text = myHandController.SupnationCount.ToString();
+        felxionCount.text = myHandController.FelxionCount.ToString();
+        closeCount.text = myHandController.CloseCount.ToString();
+    }
+
+    public void ConnectedToServer()
+    {
         unetClientBase.ConnectToServer(Ip, Port);
-//        var count = 0;
-//        while (!_connected && count < 10)
-//        {
-//            yield return new WaitForSeconds(5);
-//            unetClientBase.ConnectToServer(Ip, Port);
-//            count++;
-//        }
     }
 
     public void DisConnectedToServer()
@@ -181,70 +219,94 @@ public class TestController : MonoBehaviour {
             case 1:
                 myHandController.IFlexion();
                 myHandController.IClose(false);
+                myHandController.isClose = false;
                 myHandController.IPronation(false);
+                TargetHand01.SetActive(true);
+                TargetHand02.SetActive(false);
                 yield return new WaitForSeconds(2f);
                 myHandController.StartOneTesting();
-                IntroText.text = $"Combination {i} : Please try to move the hand to the opposite state";
+                IntroText.text = $"Combination {i} : Please try to move the hand to the target state";
                 SendMessageToServer("205");
                 break;
             case 2:
                 myHandController.IExtension();
                 myHandController.IClose(false);
+                myHandController.isClose = false;
                 myHandController.IPronation(false);
+                TargetHand01.SetActive(true);
+                TargetHand02.SetActive(false);
                 yield return new WaitForSeconds(2f);
                 myHandController.StartOneTesting();
-                IntroText.text = $"Combination {i} : Please try to move the hand to the opposite state";
+                IntroText.text = $"Combination {i} : Please try to move the hand to the target state";
                 SendMessageToServer("205");
                 break;
             case 3:
                 myHandController.IExtension();
                 myHandController.IOpen(false);
+                myHandController.isClose = true;
                 myHandController.IPronation(false);
+                TargetHand01.SetActive(false);
+                TargetHand02.SetActive(true);
                 yield return new WaitForSeconds(2f);
                 myHandController.StartOneTesting();
-                IntroText.text = $"Combination {i} : Please try to move the hand to the opposite state";
+                IntroText.text = $"Combination {i} : Please try to move the hand to the target state";
                 SendMessageToServer("205");
                 break;
             case 4:
                 myHandController.IFlexion();
                 myHandController.IOpen(false);
+                myHandController.isClose = true;
                 myHandController.IPronation(false);
+                TargetHand01.SetActive(false);
+                TargetHand02.SetActive(true);
                 yield return new WaitForSeconds(2f);
                 myHandController.StartOneTesting();
-                IntroText.text = $"Combination {i} : Please try to move the hand to the opposite state";
+                IntroText.text = $"Combination {i} : Please try to move the hand to the target state";
                 SendMessageToServer("205");
                 break;
             case 5:
                 myHandController.IFlexion();
                 myHandController.IClose(false);
+                myHandController.isClose = false;
                 myHandController.ISupination(false);
+                TargetHand01.SetActive(true);
+                TargetHand02.SetActive(false);
                 yield return new WaitForSeconds(2f);
                 myHandController.StartOneTesting();
-                IntroText.text = $"Combination {i} : Please try to move the hand to the opposite state";
+                IntroText.text = $"Combination {i} : Please try to move the hand to the target state";
                 SendMessageToServer("205");
                 break;
             case 6:
                 myHandController.IExtension();
                 myHandController.IClose(false);
+                myHandController.isClose = false;
                 myHandController.ISupination(false);
+                TargetHand01.SetActive(true);
+                TargetHand02.SetActive(false);
                 yield return new WaitForSeconds(2f);
                 myHandController.StartOneTesting();
-                IntroText.text = $"Combination {i} : Please try to move the hand to the opposite state";
+                IntroText.text = $"Combination {i} : Please try to move the hand to the target state";
                 SendMessageToServer("205");
                 break;
             case 7:
                 myHandController.IExtension();
                 myHandController.IOpen(false);
+                myHandController.isClose = true;
                 myHandController.ISupination(false);
+                TargetHand01.SetActive(false);
+                TargetHand02.SetActive(true);
                 yield return new WaitForSeconds(2f);
                 myHandController.StartOneTesting();
-                IntroText.text = $"Combination {i} : Please try to move the hand to the opposite state";
+                IntroText.text = $"Combination {i} : Please try to move the hand to the target state";
                 SendMessageToServer("205");
                 break;
             case 8:
-                myHandController.IFlexion(false);
+                myHandController.IFlexion();
                 myHandController.IOpen(false);
-                myHandController.ISupination();
+                myHandController.isClose = true;
+                myHandController.ISupination(false);
+                TargetHand01.SetActive(false);
+                TargetHand02.SetActive(true);
                 yield return new WaitForSeconds(2f);
                 myHandController.StartOneTesting();
                 IntroText.text = "Please try to move the hand to the original state";
@@ -260,5 +322,41 @@ public class TestController : MonoBehaviour {
         }
         _isPreparing = false;
 
+    }
+
+    public void ResetHand()
+    {
+        myHandController.Success -= MyHandController_Success;
+        Destroy(HandContainner.GetComponentInChildren<MyHandController>().gameObject);
+        Instantiate(HandPrefab, HandContainner.transform);
+        myHandController = HandContainner.GetComponentInChildren<MyHandController>();
+        UnityEngine.Debug.Log(myHandController);
+        myHandController.Success += MyHandController_Success;
+    }
+
+    public void ReloadTheScene()
+    {
+        DisConnectedToServer();
+        Scene scene = SceneManager.GetActiveScene();
+        SceneManager.LoadScene(scene.name);
+    }
+
+    public void DisableText()
+    {
+        Degree.SetActive(!Degree.activeInHierarchy);
+    }
+
+    private string GetIp()
+    {
+        string name = Dns.GetHostName();
+        IPAddress[] ipadrlist = Dns.GetHostAddresses(name);
+        foreach (IPAddress ipa in ipadrlist)
+        {
+            if (ipa.AddressFamily == AddressFamily.InterNetwork)
+            {
+                return ipa.ToString();
+            }
+        }
+        return "";
     }
 }

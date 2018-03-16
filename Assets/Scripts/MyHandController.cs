@@ -94,9 +94,9 @@ public class MyHandController : MonoBehaviour
     public GestureState TrainGestureState = GestureState.NoMovement;
     public GestureState TestGestureState = GestureState.NoMovement;
 
-    private int _supnationCount = 0;
-    private int _felxionCount = 0;
-    private int _closeCount = 0;
+    public int SupnationCount = 0;
+    public int FelxionCount = 0;
+    public int CloseCount = 0;
     public event EventHandler<long> Success;
     public bool IsTesting { get; private set; }
     public bool IsNullTesting { get; private set; }
@@ -105,11 +105,17 @@ public class MyHandController : MonoBehaviour
     public long OverTime = 45000;
     public long DeellingTime = 2000;
     public int TargetDistance = 75;
+    public int TargetTolerance = 5;
 
-    public Text supnationCount;
-    public Text felxionCount;
-    public Text closeCount;
+    public Material HandNormalMaterial;
+    public Material HandGreenMaterial;
 
+
+    /// <summary>
+    /// trick
+    /// </summary>
+    public bool isClose = false;
+    /// 
     // Use this for initialization
     void Start ()
     {
@@ -125,25 +131,21 @@ public class MyHandController : MonoBehaviour
 	{
         if(!IsTesting) return;
         if(sw.ElapsedMilliseconds>=OverTime) StopOneTesting(false);
-	    if (Mathf.Abs(_closeCount) > 5 || Mathf.Abs(_felxionCount) > 5 || Mathf.Abs(_supnationCount) > 5)
+	    if (Math.Abs(CloseCount-(isClose?90:15)) > TargetTolerance || Mathf.Abs(FelxionCount) > TargetTolerance || Mathf.Abs(SupnationCount) > TargetTolerance)
 	    {
             if(!sw_dewlling.IsRunning) return;
+	        gameObject.GetComponentInChildren<SkinnedMeshRenderer>().material= HandNormalMaterial;
             sw_dewlling.Stop();
             sw_dewlling.Reset();
 	    }
 	    else
 	    {
-            if(!sw_dewlling.IsRunning) sw_dewlling.Start();
+	        gameObject.GetComponentInChildren<SkinnedMeshRenderer>().material= HandGreenMaterial;
+            if (!sw_dewlling.IsRunning) sw_dewlling.Start();
             if(sw_dewlling.ElapsedMilliseconds>=DeellingTime) StopOneTesting(true);
 	    }
 	}
 
-    void OnGUI()
-    {
-        supnationCount.text = _supnationCount.ToString();
-        felxionCount.text = _felxionCount.ToString();
-        closeCount.text = _closeCount.ToString();
-    }
 
     /// <summary>
     /// Seven Gesture Public Method
@@ -284,29 +286,29 @@ public class MyHandController : MonoBehaviour
     public IEnumerator ResetHand()
     {
         
-        for (var i = 0; i < Mathf.Abs(_felxionCount); i++)
+        for (var i = 0; i < Mathf.Abs(FelxionCount); i++)
         {
             yield return new WaitForSeconds(0.01f);
-            Controller.RotateWrist(_felxionCount >= 0 ? 0.1f : -0.1f);
+            Controller.RotateWrist(FelxionCount >= 0 ? 0.1f : -0.1f);
         }
-        for (var i = 0; i < Mathf.Abs(_supnationCount); i++)
+        for (var i = 0; i < Mathf.Abs(SupnationCount); i++)
         {
             yield return new WaitForSeconds(0.01f);
-            Controller.RotateForearm(_supnationCount >= 0 ? 0.1f : -0.1f);
+            Controller.RotateForearm(SupnationCount >= 0 ? 0.1f : -0.1f);
         }
-        for (var i = 0; i < Mathf.Abs(_closeCount); i++)
+        for (var i = 0; i < Mathf.Abs(CloseCount); i++)
         {
             yield return new WaitForSeconds(0.01f);
-            if(_closeCount>=0) Controller.StopBendFingersAmount();
+            if(CloseCount>=0) Controller.StopBendFingersAmount();
             else Controller.StartBendFingersAmount();
         }
         Controller.StartBendFingers();
         Controller.StopBendFingers();
         TrainGestureState = GestureState.NoMovement;
         TestGestureState = GestureState.NoMovement;
-        _supnationCount = 0;
-        _felxionCount = 0;
-        _closeCount = 0;
+        SupnationCount = 0;
+        FelxionCount = 0;
+        CloseCount = 0;
     }
 
     public void SetForearmSpeed(float speed)
@@ -324,12 +326,18 @@ public class MyHandController : MonoBehaviour
         Controller.Fingers.BendSpeed = speed;
     }
 
+    public void SetTolerance(int tol)
+    {
+        TargetTolerance = tol;
+    }
+
     public void SupinationAndPronation(bool sup, double speed = 1f)
     {
         //        if (!IsTesting && !IsNullTesting) return;
         var speedInt = Convert.ToInt32(speed);
-        if (sup) _supnationCount += speedInt;
-        else _supnationCount-= speedInt;
+        speedInt = speedInt>0?speedInt:1;
+        if (sup) SupnationCount += speedInt;
+        else SupnationCount-= speedInt;
         Controller.RotateForearm(sup?-0.1f*speedInt:0.1f* speedInt);
     }
 
@@ -337,15 +345,17 @@ public class MyHandController : MonoBehaviour
     {
         //        if (!IsTesting && !IsNullTesting) return;
         var speedInt = Convert.ToInt32(speed);
-        if (fle) _felxionCount+= speedInt;
-        else _felxionCount-= speedInt;
+        speedInt = speedInt > 0 ? speedInt : 1;
+        if (fle) FelxionCount+= speedInt;
+        else FelxionCount-= speedInt;
         Controller.RotateWrist(fle ? -0.1f * speedInt : 0.1f * speedInt);
     }
 
     public void CloseSequence(double speed=1f)
     {
-//        if (!IsTesting && !IsNullTesting) return;
         var speedInt = Convert.ToInt32(speed);
+        speedInt = speedInt > 0 ? speedInt : 1;
+        if (CloseCount + speedInt >= 100) return;
         StartCoroutine(CloseSequenceAmount(speedInt));
     }
 
@@ -354,24 +364,26 @@ public class MyHandController : MonoBehaviour
         for (var i = 0; i < speed; i++)
         {
             Controller.StartBendFingersAmount();
-            yield return new WaitForSeconds(0.01f);
+            yield return new WaitForSeconds(0.005f);
         }
-        _closeCount += speed;
+        CloseCount += speed;
     }
 
     private IEnumerator Close()
     {
-        for (var i = 0; i < 75; i++)
+        for (var i = 0; i < 90; i++)
         {
             Controller.StartBendFingersAmount();
             yield return new WaitForSeconds(0.01f);
         }
-        _closeCount += 75;
+        CloseCount += 90;
     }
 
     public void OpenSequence(double speed = 1f)
     {
         var speedInt = Convert.ToInt32(speed);
+        speedInt = speedInt > 0 ? speedInt : 1;
+        if (CloseCount - speedInt <= 5) return;
         StartCoroutine(OpenSequenceAmount(speedInt));
     }
 
@@ -380,19 +392,19 @@ public class MyHandController : MonoBehaviour
         for (var i = 0; i < speed; i++)
         {
             Controller.StopBendFingersAmount();
-            yield return new WaitForSeconds(0.01f);
+            yield return new WaitForSeconds(0.005f);
         }
-        _closeCount -= speed;
+        CloseCount -= speed;
     }
 
     private IEnumerator Open()
     {
-        for (var i = 0; i < 75; i++)
+        for (var i = 0; i < 15; i++)
         {
-            Controller.StopBendFingersAmount();
+            Controller.StartBendFingersAmount();
             yield return new WaitForSeconds(0.01f);
         }
-        _closeCount -= 75;
+        CloseCount += 15;
     }
 
     public void StartOneTesting()
